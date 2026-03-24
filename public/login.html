@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>APVS Central Minas – CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bg-circles { position: fixed; inset: 0; overflow: hidden; z-index: 0; }
+    .circle { position: absolute; border-radius: 50%; opacity: 0.08; animation: float 8s ease-in-out infinite; }
+    .circle:nth-child(1) { width:400px;height:400px;background:#6c63ff;top:-100px;left:-100px; }
+    .circle:nth-child(2) { width:300px;height:300px;background:#ff6584;bottom:-80px;right:-80px;animation-delay:2s; }
+    .circle:nth-child(3) { width:200px;height:200px;background:#43e97b;top:50%;left:60%;animation-delay:4s; }
+    @keyframes float { 0%,100%{transform:translateY(0)}50%{transform:translateY(-20px)} }
+
+    .login-container { position:relative;z-index:1;width:100%;max-width:420px;padding:20px; }
+    .logo-section { text-align:center;margin-bottom:32px; }
+    .logo-icon { width:72px;height:72px;background:linear-gradient(135deg,#6c63ff,#4facfe);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;box-shadow:0 12px 40px rgba(108,99,255,0.4); }
+    .logo-section h1 { color:#fff;font-size:24px;font-weight:700; }
+    .logo-section p { color:rgba(255,255,255,0.5);font-size:14px;margin-top:4px; }
+
+    .card { background:rgba(255,255,255,0.07);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:36px;box-shadow:0 24px 60px rgba(0,0,0,0.4); }
+    .card h2 { color:#fff;font-size:18px;font-weight:600;margin-bottom:24px; }
+    .form-group { margin-bottom:18px; }
+    label { display:block;color:rgba(255,255,255,0.6);font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px; }
+
+    .input-wrap { position:relative; }
+    .input-wrap .ico { position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.3);font-size:16px;pointer-events:none; }
+    .field { width:100%;padding:12px 14px 12px 42px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;color:#fff;font-size:15px;font-family:'Inter',sans-serif;transition:all 0.2s;outline:none; }
+    .field::placeholder { color:rgba(255,255,255,0.25); }
+    .field:focus { border-color:rgba(108,99,255,0.8);background:rgba(108,99,255,0.1);box-shadow:0 0 0 3px rgba(108,99,255,0.15); }
+
+    .btn-login { width:100%;padding:14px;background:linear-gradient(135deg,#6c63ff,#4facfe);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;transition:all 0.2s;margin-top:8px; }
+    .btn-login:hover:not(:disabled) { transform:translateY(-1px);box-shadow:0 8px 24px rgba(108,99,255,0.5); }
+    .btn-login:disabled { opacity:0.6;cursor:not-allowed; }
+
+    .error-msg { background:rgba(255,82,82,0.15);border:1px solid rgba(255,82,82,0.3);border-radius:10px;color:#ff8080;font-size:13px;padding:10px 14px;margin-top:14px;display:none; }
+    .footer-text { text-align:center;color:rgba(255,255,255,0.25);font-size:12px;margin-top:24px; }
+  </style>
+</head>
+<body>
+  <div class="bg-circles"><div class="circle"></div><div class="circle"></div><div class="circle"></div></div>
+
+  <div class="login-container">
+    <div class="logo-section">
+      <div class="logo-icon">🚗</div>
+      <h1>APVS Central Minas</h1>
+      <p>Sistema de Gestão de Leads</p>
+    </div>
+    <div class="card">
+      <h2>Entrar na plataforma</h2>
+      <div class="form-group">
+        <label>Usuário</label>
+        <div class="input-wrap">
+          <span class="ico">👤</span>
+          <input class="field" type="text" id="fUser" placeholder="seu.usuario" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <div class="input-wrap">
+          <span class="ico">🔒</span>
+          <input class="field" type="password" id="fPass" placeholder="••••••••" autocomplete="off">
+        </div>
+      </div>
+      <button class="btn-login" id="btnLogin" type="button" onclick="doLogin()">Entrar</button>
+      <div class="error-msg" id="errMsg"></div>
+    </div>
+    <div class="footer-text">APVS Central Minas © 2024 · CRM de Leads</div>
+  </div>
+
+  <script>
+    localStorage.clear();
+    document.getElementById('fPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+    async function doLogin() {
+      const username = document.getElementById('fUser').value.trim();
+      const password = document.getElementById('fPass').value;
+      const btn = document.getElementById('btnLogin');
+      const err = document.getElementById('errMsg');
+
+      err.style.display = 'none';
+      if (!username || !password) { err.textContent = 'Preencha usuário e senha'; err.style.display = 'block'; return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Entrando...';
+
+      try {
+        const r = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'Erro ao entrar');
+        localStorage.setItem('crm_token', d.token);
+        localStorage.setItem('crm_user', JSON.stringify(d.user));
+        window.location.replace('/dashboard');
+      } catch (e) {
+        err.textContent = e.message;
+        err.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+      }
+    }
+  </script>
+</body>
+</html>
