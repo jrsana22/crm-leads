@@ -506,11 +506,29 @@ async function refresh() {
     allLeads = newLeads;
     const badge = document.getElementById('totalBadge');
     if (badge) badge.textContent = allLeads.length;
-    if (changed && currentView) switchView(currentView);
+    if (!changed) return;
+    // Atualização cirúrgica sem re-render completo (sem flash)
+    if (currentView === 'kanban')   renderKanban();
+    else if (currentView === 'leads') { const tbody = document.getElementById('leadsBody'); if (tbody) applyFilters(); }
+    else if (currentView === 'overview') refreshOverviewStats();
+    else if (currentView) switchView(currentView);
   } catch(e) { console.error(e); }
 }
 
 // ── Overview ─────────────────────────────────────────────────────────────────
+async function refreshOverviewStats() {
+  const stats = await api('/api/stats');
+  if (!stats) return;
+  const s = Object.fromEntries((stats.byStatus||[]).map(x=>[x.status,x.count]));
+  const map = { 'ov-total': stats.total, 'ov-cotacao': s.cotacao||0, 'ov-negociacao': s.negociacao||0, 'ov-fechado': s.fechado||0 };
+  Object.entries(map).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.textContent = val; });
+  // atualiza lista recente sem piscar
+  const recentEl = document.getElementById('recentList');
+  if (recentEl && stats.recent) recentEl.innerHTML = stats.recent.length
+    ? stats.recent.map(l => leadCardHtml(l)).join('')
+    : '<div class="empty"><div class="ei">📭</div><p>Nenhum lead ainda</p></div>';
+}
+
 async function renderOverview() {
   const content = document.getElementById('content');
   content.innerHTML = '<div style="color:var(--muted);padding:20px">Carregando…</div>';
@@ -520,10 +538,10 @@ async function renderOverview() {
   const s = Object.fromEntries((stats.byStatus||[]).map(x=>[x.status,x.count]));
   content.innerHTML = `
     <div class="stats-grid">
-      <div class="stat-card blue"><div class="stat-label">Total de Leads</div><div class="stat-value">${stats.total}</div><div class="stat-sub">Todos os consultores</div></div>
-      <div class="stat-card yellow"><div class="stat-label">Em Cotação</div><div class="stat-value">${s.cotacao||0}</div><div class="stat-sub">Aguardando proposta</div></div>
-      <div class="stat-card orange"><div class="stat-label">Em Negociação</div><div class="stat-value">${s.negociacao||0}</div><div class="stat-sub">Em andamento</div></div>
-      <div class="stat-card green"><div class="stat-label">Fechados</div><div class="stat-value">${s.fechado||0}</div><div class="stat-sub">Concluídos</div></div>
+      <div class="stat-card blue"><div class="stat-label">Total de Leads</div><div class="stat-value" id="ov-total">${stats.total}</div><div class="stat-sub">Todos os consultores</div></div>
+      <div class="stat-card yellow"><div class="stat-label">Em Cotação</div><div class="stat-value" id="ov-cotacao">${s.cotacao||0}</div><div class="stat-sub">Aguardando proposta</div></div>
+      <div class="stat-card orange"><div class="stat-label">Em Negociação</div><div class="stat-value" id="ov-negociacao">${s.negociacao||0}</div><div class="stat-sub">Em andamento</div></div>
+      <div class="stat-card green"><div class="stat-label">Fechados</div><div class="stat-value" id="ov-fechado">${s.fechado||0}</div><div class="stat-sub">Concluídos</div></div>
     </div>
     <div class="sec-title" style="margin-bottom:14px">Desempenho por Consultor</div>
     <div class="consultants-grid">${(stats.byConsultant||[]).map((c,i)=>`
