@@ -1212,7 +1212,13 @@ function leadCardHtml(l, showEdit = false) {
 
 function fmt(d) {
   if (!d) return '–';
-  return new Date(d).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  // SQLite salva em UTC sem 'Z' — adiciona Z para forçar parse correto e exibe em BRT
+  const iso = String(d).replace(' ', 'T') + (d.includes('Z') || d.includes('+') ? '' : 'Z');
+  return new Date(iso).toLocaleString('pt-BR', {
+    day:'2-digit', month:'2-digit', year:'numeric',
+    hour:'2-digit', minute:'2-digit',
+    timeZone:'America/Sao_Paulo'
+  });
 }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function openMo(id) { document.getElementById(id).classList.add('open'); }
