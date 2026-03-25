@@ -360,6 +360,41 @@ app.delete('/api/users/:id', auth, adminOnly, (req, res) => {
   res.json({ success: true });
 });
 
+// ── Analytics ──────────────────────────────────────────────────────────────────
+app.get('/api/analytics', auth, (req, res) => {
+  const { from, to } = req.query;
+  const isConsultor = req.user.role === 'consultor';
+  const cid = req.user.consultant_id;
+
+  const dp = [];
+  let dj = '';
+  if (from) { dj += ' AND l.created_at >= ?'; dp.push(from); }
+  if (to)   { dj += ' AND l.created_at <= ?'; dp.push(to + ' 23:59:59'); }
+
+  let wh = 'WHERE 1=1' + dj;
+  const wp = [...dp];
+  if (isConsultor) { wh += ' AND l.consultant_id=?'; wp.push(cid); }
+
+  const total    = db.prepare(`SELECT COUNT(*) as c FROM leads l ${wh}`).get(...wp).c;
+  const byStatus = db.prepare(`SELECT status, COUNT(*) as count FROM leads l ${wh} GROUP BY status`).all(...wp);
+
+  const rankWhere = isConsultor ? 'WHERE c.id=?' : 'WHERE c.active=1';
+  const rankParams = [...dp, ...(isConsultor ? [cid] : [])];
+  const ranking = db.prepare(`
+    SELECT c.name, c.order_index,
+      COUNT(l.id) as total,
+      SUM(CASE WHEN l.status='fechado'    THEN 1 ELSE 0 END) as fechados,
+      SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
+      SUM(CASE WHEN l.status='cotacao'    THEN 1 ELSE 0 END) as cotacao
+    FROM consultants c
+    LEFT JOIN leads l ON c.id=l.consultant_id${dj}
+    ${rankWhere}
+    GROUP BY c.id ORDER BY fechados DESC, total DESC
+  `).all(...rankParams);
+
+  res.json({ total, byStatus, ranking });
+});
+
 // ── Activity ───────────────────────────────────────────────────────────────────
 app.get('/api/activity', auth, (req, res) => {
   if (req.user.role === 'consultor') {
