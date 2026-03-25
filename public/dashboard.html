@@ -64,6 +64,7 @@
     .stat-card.yellow::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
     .stat-card.orange::before{background:linear-gradient(90deg,#f97316,#fb923c)}
     .stat-card.green::before{background:linear-gradient(90deg,#22c55e,#4ade80)}
+    .stat-card.red::before{background:linear-gradient(90deg,#ef4444,#f87171)}
     .stat-label{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
     .stat-value{font-size:36px;font-weight:700;line-height:1;margin-bottom:6px}
     .stat-sub{font-size:12px;color:var(--muted)}
@@ -600,7 +601,7 @@ async function refreshOverviewStats() {
   const stats = await api('/api/stats');
   if (!stats) return;
   const s = Object.fromEntries((stats.byStatus||[]).map(x=>[x.status,x.count]));
-  const map = { 'ov-total': stats.total, 'ov-cotacao': s.cotacao||0, 'ov-negociacao': s.negociacao||0, 'ov-fechado': s.fechado||0 };
+  const map = { 'ov-total': stats.total, 'ov-cotacao': s.cotacao||0, 'ov-negociacao': s.negociacao||0, 'ov-fechado': s.fechado||0, 'ov-perdido': s.perdido||0 };
   Object.entries(map).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.textContent = val; });
   // atualiza lista recente sem piscar
   const recentEl = document.getElementById('recentList');
@@ -622,6 +623,7 @@ async function renderOverview() {
       <div class="stat-card yellow"><div class="stat-label">Em Cotação</div><div class="stat-value" id="ov-cotacao">${s.cotacao||0}</div><div class="stat-sub">Aguardando proposta</div></div>
       <div class="stat-card orange"><div class="stat-label">Em Negociação</div><div class="stat-value" id="ov-negociacao">${s.negociacao||0}</div><div class="stat-sub">Em andamento</div></div>
       <div class="stat-card green"><div class="stat-label">Fechados</div><div class="stat-value" id="ov-fechado">${s.fechado||0}</div><div class="stat-sub">Concluídos</div></div>
+      <div class="stat-card red"><div class="stat-label">Perdidos</div><div class="stat-value" id="ov-perdido" style="color:var(--red)">${s.perdido||0}</div><div class="stat-sub">Não convertidos</div></div>
     </div>
     <div class="sec-title" style="margin-bottom:14px">Desempenho por Consultor</div>
     <div class="consultants-grid">${(stats.byConsultant||[]).map((c,i)=>`
@@ -632,8 +634,9 @@ async function renderOverview() {
         </div>
         <div class="cc-stats">
           <div class="cs cotacao"><span class="n">${c.cotacao||0}</span>Cotação</div>
-          <div class="cs negociacao"><span class="n">${c.negociacao||0}</span>Negociação</div>
+          <div class="cs negociacao"><span class="n">${c.negociacao||0}</span>Negoc.</div>
           <div class="cs fechado"><span class="n">${c.fechado||0}</span>Fechado</div>
+          <div class="cs perdido"><span class="n">${c.perdido||0}</span>Perdido</div>
         </div>
       </div>`).join('')}
     </div>
@@ -772,6 +775,7 @@ function renderLeadsView() {
           <option value="cotacao">Em Cotação</option>
           <option value="negociacao">Em Negociação</option>
           <option value="fechado">Fechado</option>
+          <option value="perdido">Perdido</option>
         </select>
         ${consultantCol}
       </div>
@@ -1168,11 +1172,12 @@ async function loadAnalise() {
       <div class="stat-card yellow"><div class="stat-label">Em Cotação</div><div class="stat-value">${s.cotacao||0}</div><div class="stat-sub">Aguardando proposta</div></div>
       <div class="stat-card orange"><div class="stat-label">Em Negociação</div><div class="stat-value">${s.negociacao||0}</div><div class="stat-sub">Em andamento</div></div>
       <div class="stat-card green"><div class="stat-label">Fechados</div><div class="stat-value">${s.fechado||0}</div><div class="stat-sub">Concluídos</div></div>
+      <div class="stat-card red"><div class="stat-label">Perdidos</div><div class="stat-value" style="color:var(--red)">${s.perdido||0}</div><div class="stat-sub">Não convertidos</div></div>
     </div>
     <div class="tw" id="analiseRanking">
       <div class="th"><h3>🏆 Ranking de Fechamentos</h3><span style="font-size:12px;color:var(--muted)">Ordenado por leads fechados no período</span></div>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th style="width:50px">#</th><th>Consultor(a)</th><th>🟢 Fechados</th><th>🟡 Negociação</th><th>🔵 Cotação</th><th>Total</th></tr></thead>
+        <thead><tr><th style="width:50px">#</th><th>Consultor(a)</th><th>🟢 Fechados</th><th>🟡 Negociação</th><th>🔵 Cotação</th><th>🔴 Perdidos</th><th>Total</th></tr></thead>
         <tbody>${(data.ranking||[]).map((c,i) => `
           <tr style="${i===0?'background:rgba(108,99,255,.05)':''}">
             <td style="font-size:${i<3?'22':'14'}px;text-align:center">${medals[i]||`${i+1}º`}</td>
@@ -1183,6 +1188,7 @@ async function loadAnalise() {
             <td><span style="font-size:${i===0?'24':'18'}px;font-weight:700;color:var(--green)">${c.fechados||0}</span></td>
             <td><span style="font-weight:600;color:var(--yellow)">${c.negociacao||0}</span></td>
             <td><span style="font-weight:600;color:var(--blue)">${c.cotacao||0}</span></td>
+            <td><span style="font-weight:600;color:var(--red)">${c.perdidos||0}</span></td>
             <td style="color:var(--muted);font-weight:600">${c.total||0}</td>
           </tr>`).join('')}
         </tbody>
@@ -1205,10 +1211,11 @@ function exportAnaliseCSV() {
     ['Em Cotação',     s.cotacao    || 0],
     ['Em Negociação',  s.negociacao || 0],
     ['Fechados',       s.fechado    || 0],
+    ['Perdidos',       s.perdido    || 0],
     [],
     ['RANKING DE FECHAMENTOS'],
-    ['Posição', 'Consultor(a)', 'Fechados', 'Em Negociação', 'Em Cotação', 'Total'],
-    ...(_analiseData.ranking||[]).map((c,i) => [`${i+1}º`, c.name, c.fechados||0, c.negociacao||0, c.cotacao||0, c.total||0])
+    ['Posição', 'Consultor(a)', 'Fechados', 'Em Negociação', 'Em Cotação', 'Perdidos', 'Total'],
+    ...(_analiseData.ranking||[]).map((c,i) => [`${i+1}º`, c.name, c.fechados||0, c.negociacao||0, c.cotacao||0, c.perdidos||0, c.total||0])
   ];
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
@@ -1251,18 +1258,19 @@ function exportAnalisePDF() {
       <td style="text-align:center;color:#16a34a;font-weight:700">${c.fechados||0}</td>
       <td style="text-align:center;color:#d97706">${c.negociacao||0}</td>
       <td style="text-align:center;color:#2563eb">${c.cotacao||0}</td>
+      <td style="text-align:center;color:#ef4444">${c.perdidos||0}</td>
       <td style="text-align:center;font-weight:600">${c.total||0}</td>
     </tr>`).join('');
   const win = window.open('', '_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>Performance APVS ${from} - ${to}</title>
     <style>
-      body{font-family:Arial,sans-serif;padding:32px;color:#111;max-width:800px;margin:0 auto}
+      body{font-family:Arial,sans-serif;padding:32px;color:#111;max-width:900px;margin:0 auto}
       h1{color:#1648cc;margin-bottom:4px;font-size:22px} .sub{color:#666;font-size:13px;margin-bottom:24px}
-      .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+      .cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px}
       .card{border:1px solid #e5e7eb;border-radius:10px;padding:14px;text-align:center}
       .card .val{font-size:28px;font-weight:700} .card .lbl{font-size:11px;color:#666;margin-top:2px}
-      .blue .val{color:#1648cc} .green .val{color:#16a34a} .yellow .val{color:#d97706} .orange .val{color:#ea580c}
+      .blue .val{color:#1648cc} .green .val{color:#16a34a} .yellow .val{color:#d97706} .orange .val{color:#ea580c} .red .val{color:#ef4444}
       table{width:100%;border-collapse:collapse;font-size:14px}
       th{background:#1648cc;color:#fff;padding:10px 12px;text-align:left}
       td{padding:9px 12px;border-bottom:1px solid #e5e7eb}
@@ -1278,9 +1286,10 @@ function exportAnalisePDF() {
       <div class="card yellow"><div class="val">${s.cotacao||0}</div><div class="lbl">Em Cotação</div></div>
       <div class="card orange"><div class="val">${s.negociacao||0}</div><div class="lbl">Em Negociação</div></div>
       <div class="card green"><div class="val">${s.fechado||0}</div><div class="lbl">Fechados</div></div>
+      <div class="card red"><div class="val">${s.perdido||0}</div><div class="lbl">Perdidos</div></div>
     </div>
     <h2>🏆 Ranking de Fechamentos</h2>
-    <table><thead><tr><th>#</th><th>Consultor(a)</th><th>Fechados</th><th>Negociação</th><th>Cotação</th><th>Total</th></tr></thead>
+    <table><thead><tr><th>#</th><th>Consultor(a)</th><th>Fechados</th><th>Negociação</th><th>Cotação</th><th>Perdidos</th><th>Total</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <div class="footer">APVS Central Minas · CRM de Leads · apvscentral.solucoesdeia.com</div>
     <script>window.onload=()=>{window.print()}<\/script>
