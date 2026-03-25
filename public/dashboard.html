@@ -1517,14 +1517,16 @@ function leadCardHtml(l, showEdit = false) {
       <div style="display:flex;gap:4px;flex-shrink:0">
         <span class="badge ${l.status}" style="font-size:11px">${STATUS_LABEL[l.status]}</span>
         ${showEdit?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openEdit(${l.id})" style="padding:2px 7px">✏️</button>`:''}
-        ${isAdmin?`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteLead(${l.id})" style="padding:2px 7px">🗑</button>`:''}
       </div>
     </div>
     <div class="lcard-meta">
       <span>📱 ${l.phone}</span>
       ${l.plate?`<span>🔢 ${l.plate}</span>`:''}
     </div>
-    <span class="ctag ${cColor(l.consultant_id)}" style="padding:3px 8px;border-radius:6px;font-size:11px">${l.consultant_name}</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+      <span class="ctag ${cColor(l.consultant_id)}" style="padding:3px 8px;border-radius:6px;font-size:11px;margin-top:0">${l.consultant_name}</span>
+      ${isAdmin?`<button class="btn btn-sm" onclick="event.stopPropagation();deleteLead(${l.id})" style="padding:2px 6px;font-size:11px;background:transparent;border:none;color:var(--muted);opacity:.5" onmouseenter="this.style.opacity=1;this.style.color='var(--red)'" onmouseleave="this.style.opacity=.5;this.style.color='var(--muted)'">🗑</button>`:''}
+    </div>
   </div>`;
 }
 
