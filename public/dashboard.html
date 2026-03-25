@@ -278,7 +278,7 @@
     </div>
     <div class="fg"><label class="fl">Perfil de acesso</label>
       <select class="fi" id="uRole" onchange="toggleURole()">
-        <option value="consultor">Consultor</option>
+        <option value="consultor">Consultor(a)</option>
         <option value="manager">Visão geral</option>
       </select>
     </div>
@@ -304,10 +304,10 @@
 <!-- Modal: consultant whatsapp -->
 <div class="mo" id="moConsultant">
   <div class="md" style="max-width:400px">
-    <div class="md-head"><h3 id="cTitle">WhatsApp do Consultor</h3><button class="md-close" onclick="closeMo('moConsultant')">✕</button></div>
+    <div class="md-head"><h3 id="cTitle">WhatsApp do(a) Consultor(a)</h3><button class="md-close" onclick="closeMo('moConsultant')">✕</button></div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Número que receberá o lead assim que for atribuído a este consultor.</p>
     <div class="fg"><label class="fl">Número (com DDI+DDD)</label>
-      <input class="fi" type="text" id="cPhone" placeholder="5531999999999" autocomplete="off">
+      <input class="fi" type="tel" id="cPhone" placeholder="5531999999999" autocomplete="off" inputmode="numeric">
       <span style="font-size:11px;color:var(--muted);margin-top:4px;display:block">Ex: 5531999990001</span>
     </div>
     <div class="md-foot">
@@ -323,7 +323,7 @@
 // ── Constants ────────────────────────────────────────────────────────────────
 const AV = ['c0','c1','c2','c3','c4'];
 const STATUS_LABEL = { cotacao:'🔵 Cotação', negociacao:'🟡 Negociação', fechado:'🟢 Fechado' };
-const ROLE_LABEL   = { admin:'⚙️ Admin', manager:'👔 Gerente', consultor:'🧑‍💼 Consultor' };
+const ROLE_LABEL   = { admin:'⚙️ Admin', manager:'👔 Gerente', consultor:'🧑‍💼 Consultor(a)' };
 const ACTION_LABEL = { created:'Lead criado', status_changed:'Status alterado', reassigned:'Reatribuído', duplicate_blocked:'Duplicata bloqueada' };
 const PAGE_TITLES  = { overview:'Visão Geral', kanban:'Board CRM', leads:'Todos os Leads', activity:'Atividades', analise:'Análise & Ranking', admin:'Gerenciar Usuários' };
 
