@@ -306,6 +306,19 @@
   </div>
 </div>
 
+<!-- Modal: confirmação -->
+<div class="mo" id="moConfirm">
+  <div class="md" style="max-width:360px;text-align:center">
+    <div style="font-size:40px;margin-bottom:12px" id="confirmIcon">⚠️</div>
+    <h3 id="confirmTitle" style="font-size:17px;font-weight:700;margin-bottom:8px;color:var(--text)"></h3>
+    <p id="confirmMsg" style="font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:24px"></p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-ghost" style="min-width:110px" onclick="_confirmResolve(false)">Cancelar</button>
+      <button class="btn" id="confirmOkBtn" style="min-width:110px" onclick="_confirmResolve(true)">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: alterar senha -->
 <div class="mo" id="moChangePwd">
   <div class="md" style="max-width:380px">
@@ -383,6 +396,21 @@ let token, user, consultants = [], allLeads = [], currentView = '', editingLeadI
 
 function go(url) { window.location.replace(url); }
 function logout() { localStorage.clear(); go('/'); }
+
+// ── Confirm modal ────────────────────────────────────────────────────────────
+let _confirmResolve = () => {};
+function showConfirm({ icon='⚠️', title, msg, okLabel='Confirmar', okClass='btn-danger' } = {}) {
+  document.getElementById('confirmIcon').textContent = icon;
+  document.getElementById('confirmTitle').textContent = title || '';
+  document.getElementById('confirmMsg').textContent = msg || '';
+  const btn = document.getElementById('confirmOkBtn');
+  btn.textContent = okLabel;
+  btn.className = `btn ${okClass}`;
+  openMo('moConfirm');
+  return new Promise(res => {
+    _confirmResolve = (val) => { closeMo('moConfirm'); res(val); };
+  });
+}
 
 function openChangePwd() {
   ['cpCurrent','cpNew','cpConfirm'].forEach(id => document.getElementById(id).value = '');
@@ -755,7 +783,8 @@ async function saveEdit() {
   const newStatus = document.getElementById('eStatus').value;
   const lead = allLeads.find(l => l.id === editingLeadId);
   if (lead?.status === 'fechado' && newStatus !== 'fechado') {
-    if (!confirm(`⚠️ Este lead já foi fechado.\nDeseja realmente mover para "${STATUS_LABEL[newStatus].replace(/^\S+ /,'')}"?`)) return;
+    const ok = await showConfirm({ icon:'🔓', title:'Reabrir lead fechado?', msg:`Este lead já foi fechado. Deseja mover para "${STATUS_LABEL[newStatus].replace(/^\S+ /,'')}"?`, okLabel:'Sim, reabrir', okClass:'btn-primary' });
+    if (!ok) return;
   }
   const body = { status: newStatus, notes: document.getElementById('eNotes').value };
   if (user.role !== 'consultor') body.consultant_id = parseInt(document.getElementById('eConsultant').value);
@@ -766,7 +795,7 @@ async function saveEdit() {
 }
 
 async function deleteLead(id) {
-  if (!confirm('Excluir este lead?')) return;
+  if (!await showConfirm({ icon:'🗑️', title:'Excluir lead?', msg:'Esta ação não pode ser desfeita.', okLabel:'Excluir', okClass:'btn-danger' })) return;
   await api(`/api/leads/${id}`, { method:'DELETE' });
   await refresh();
   toast('Lead excluído', 'info');
@@ -903,7 +932,7 @@ async function saveUser() {
   toast(editingUserId?'Usuário atualizado!':'Usuário criado!','success');
 }
 async function deleteUser(id) {
-  if (!confirm('Excluir este usuário?')) return;
+  if (!await showConfirm({ icon:'🗑️', title:'Excluir usuário?', msg:'Esta ação não pode ser desfeita.', okLabel:'Excluir', okClass:'btn-danger' })) return;
   const r = await api(`/api/users/${id}`, { method:'DELETE' });
   if (r?.error) return toast(r.error,'error');
   await loadAdminData();
@@ -1124,7 +1153,10 @@ async function dragDrop(e, status) {
   if (!id) return;
   const lead = allLeads.find(l => l.id === id);
   if (!lead || lead.status === status) return;
-  if (lead.status === 'fechado' && !confirm(`⚠️ Este lead já foi fechado.\nDeseja realmente mover para "${STATUS_LABEL[status].replace(/^\S+ /,'')}"?`)) return;
+  if (lead.status === 'fechado') {
+    const ok = await showConfirm({ icon:'🔓', title:'Reabrir lead fechado?', msg:`Este lead já foi fechado. Deseja mover para "${STATUS_LABEL[status].replace(/^\S+ /,'')}"?`, okLabel:'Sim, reabrir', okClass:'btn-primary' });
+    if (!ok) return;
+  }
   await api(`/api/leads/${id}`, { method:'PATCH', body:JSON.stringify({ status }) });
   await refresh();
   toast(`Movido para ${STATUS_LABEL[status].replace(/^\S+ /,'')}`, 'success');
@@ -1227,7 +1259,10 @@ document.addEventListener('touchend', async e => {
     const status = col.id.replace('col-', '');
     const lead = allLeads.find(l => l.id === _touchId);
     if (lead && lead.status !== status) {
-      if (lead.status === 'fechado' && !confirm(`⚠️ Este lead já foi fechado.\nDeseja realmente mover para "${STATUS_LABEL[status].replace(/^\S+ /,'')}"?`)) { _touchId = null; return; }
+      if (lead.status === 'fechado') {
+        const ok = await showConfirm({ icon:'🔓', title:'Reabrir lead fechado?', msg:`Este lead já foi fechado. Deseja mover para "${STATUS_LABEL[status].replace(/^\S+ /,'')}"?`, okLabel:'Sim, reabrir', okClass:'btn-primary' });
+        if (!ok) { _touchId = null; return; }
+      }
       await api(`/api/leads/${_touchId}`, { method:'PATCH', body:JSON.stringify({ status }) });
       await refresh();
       toast(`Movido para ${STATUS_LABEL[status].replace(/^\S+ /,'')}`, 'success');
