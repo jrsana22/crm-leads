@@ -610,6 +610,8 @@ function setKanbanFilter(cid) {
 
 function renderKanban() {
   const cols = { cotacao:[], negociacao:[], fechado:[] };
+  const now = new Date();
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
   let filtered;
   if (user.role === 'consultor') {
@@ -620,7 +622,12 @@ function renderKanban() {
     filtered = allLeads;
   }
 
-  filtered.forEach(l => { if (cols[l.status]) cols[l.status].push(l); });
+  filtered.forEach(l => {
+    if (!cols[l.status]) return;
+    // Coluna fechado: só exibe leads fechados no mês atual
+    if (l.status === 'fechado' && !(l.updated_at||'').startsWith(curMonth)) return;
+    cols[l.status].push(l);
+  });
 
   ['cotacao','negociacao','fechado'].forEach(s => {
     const cnt = document.getElementById(`cnt-${s}`);
@@ -745,7 +752,12 @@ function openEdit(id) {
 }
 
 async function saveEdit() {
-  const body = { status: document.getElementById('eStatus').value, notes: document.getElementById('eNotes').value };
+  const newStatus = document.getElementById('eStatus').value;
+  const lead = allLeads.find(l => l.id === editingLeadId);
+  if (lead?.status === 'fechado' && newStatus !== 'fechado') {
+    if (!confirm(`⚠️ Este lead já foi fechado.\nDeseja realmente mover para "${STATUS_LABEL[newStatus].replace(/^\S+ /,'')}"?`)) return;
+  }
+  const body = { status: newStatus, notes: document.getElementById('eNotes').value };
   if (user.role !== 'consultor') body.consultant_id = parseInt(document.getElementById('eConsultant').value);
   await api(`/api/leads/${editingLeadId}`, { method:'PATCH', body:JSON.stringify(body) });
   closeMo('moEdit');
@@ -1112,6 +1124,7 @@ async function dragDrop(e, status) {
   if (!id) return;
   const lead = allLeads.find(l => l.id === id);
   if (!lead || lead.status === status) return;
+  if (lead.status === 'fechado' && !confirm(`⚠️ Este lead já foi fechado.\nDeseja realmente mover para "${STATUS_LABEL[status].replace(/^\S+ /,'')}"?`)) return;
   await api(`/api/leads/${id}`, { method:'PATCH', body:JSON.stringify({ status }) });
   await refresh();
   toast(`Movido para ${STATUS_LABEL[status].replace(/^\S+ /,'')}`, 'success');
@@ -1214,6 +1227,7 @@ document.addEventListener('touchend', async e => {
     const status = col.id.replace('col-', '');
     const lead = allLeads.find(l => l.id === _touchId);
     if (lead && lead.status !== status) {
+      if (lead.status === 'fechado' && !confirm(`⚠️ Este lead já foi fechado.\nDeseja realmente mover para "${STATUS_LABEL[status].replace(/^\S+ /,'')}"?`)) { _touchId = null; return; }
       await api(`/api/leads/${_touchId}`, { method:'PATCH', body:JSON.stringify({ status }) });
       await refresh();
       toast(`Movido para ${STATUS_LABEL[status].replace(/^\S+ /,'')}`, 'success');
