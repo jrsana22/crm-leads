@@ -296,7 +296,7 @@
   <div class="md" style="max-width:560px">
     <div class="md-head"><h3 id="detailTitle">Lead</h3><button class="md-close" onclick="closeMo('moDetail')">✕</button></div>
     <div id="detailBody"></div>
-    <div class="md-foot"><button class="btn btn-ghost" onclick="closeMo('moDetail')">Fechar</button></div>
+    <div class="md-foot" id="detailFoot"><button class="btn btn-ghost" onclick="closeMo('moDetail')">Fechar</button></div>
   </div>
 </div>
 
@@ -885,6 +885,14 @@ async function openDetail(id) {
         <span class="act-time">${fmt(a.created_at)}</span>
       </div>`).join('') || '<p style="color:var(--muted);font-size:13px">Sem histórico</p>'}
   `;
+  if (user.role === 'admin') {
+    document.getElementById('detailFoot').innerHTML =
+      `<button class="btn btn-danger" onclick="deleteLead(${lead.id});closeMo('moDetail')">🗑 Excluir lead</button>
+       <button class="btn btn-ghost" onclick="closeMo('moDetail')">Fechar</button>`;
+  } else {
+    document.getElementById('detailFoot').innerHTML =
+      `<button class="btn btn-ghost" onclick="closeMo('moDetail')">Fechar</button>`;
+  }
   openMo('moDetail');
 }
 
@@ -1506,12 +1514,14 @@ function cColor(consultantId) {
 }
 
 function leadCardHtml(l, showEdit = false) {
+  const isAdmin = user.role === 'admin';
   return `<div class="lcard" draggable="true" ondragstart="dragStart(event,${l.id})" ondragend="dragEnd(event)" ondragover="event.preventDefault()" onclick="openDetail(${l.id})">
     <div class="lcard-name">
       ${esc(l.name)}
-      <div style="display:flex;gap:6px;flex-shrink:0">
+      <div style="display:flex;gap:4px;flex-shrink:0">
         <span class="badge ${l.status}" style="font-size:11px">${STATUS_LABEL[l.status]}</span>
         ${showEdit?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openEdit(${l.id})" style="padding:2px 7px">✏️</button>`:''}
+        ${isAdmin?`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteLead(${l.id})" style="padding:2px 7px">🗑</button>`:''}
       </div>
     </div>
     <div class="lcard-meta">
