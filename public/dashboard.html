@@ -865,7 +865,7 @@ function renderAnaliseView() {
         <div id="exportBar" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
           <span style="font-size:12px;color:var(--muted);font-weight:500">Exportar:</span>
           <button class="btn btn-ghost btn-sm" onclick="exportAnaliseCSV()">⬇ CSV</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportAnalisePED()">📄 PED</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportAnalisePDF()">📄 PDF</button>
           <button class="btn btn-ghost btn-sm" id="btnWpp" onclick="toggleWppField()">💬 WhatsApp</button>
           <div id="wppField" style="display:none;align-items:center;gap:6px">
             <input type="tel" id="wppNumber" class="sinput" placeholder="5531999999999" inputmode="numeric" style="width:160px">
@@ -971,7 +971,7 @@ async function exportAnaliseWpp() {
   document.getElementById('wppNumber').value = '';
 }
 
-function exportAnalisePED() {
+function exportAnalisePDF() {
   if (!_analiseData) return;
   const from = _analiseData.from || 'início';
   const to   = _analiseData.to   || 'hoje';
