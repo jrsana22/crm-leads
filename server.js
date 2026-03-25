@@ -149,6 +149,17 @@ app.post('/api/auth/login', rateLimit(10, 60000), (req, res) => {
   res.json({ token, user: { id: u.id, username: u.username, role: u.role, name: u.name, consultant_id: u.consultant_id || null } });
 });
 
+app.post('/api/auth/change-password', auth, (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Preencha todos os campos' });
+  if (newPassword.length < 6) return res.status(400).json({ error: 'Senha deve ter ao menos 6 caracteres' });
+  const u = db.prepare('SELECT * FROM users WHERE id=?').get(req.user.id);
+  if (!u || !bcrypt.compareSync(currentPassword, u.password_hash))
+    return res.status(401).json({ error: 'Senha atual incorreta' });
+  db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(bcrypt.hashSync(newPassword, 10), req.user.id);
+  res.json({ success: true });
+});
+
 // ── Webhook ────────────────────────────────────────────────────────────────────
 app.post('/webhook', rateLimit(60, 60000), async (req, res) => {
   try {

@@ -222,6 +222,9 @@
   </div>
   <nav class="sb-nav" id="sbNav"></nav>
   <div class="sb-foot">
+    <div style="padding:0 12px 8px">
+      <button class="btn btn-ghost btn-sm" style="width:100%;font-size:12px;justify-content:center" onclick="openChangePwd()">🔑 Alterar senha</button>
+    </div>
     <div class="user-row" onclick="logout()">
       <div class="av c0" id="sbAv">A</div>
       <div class="user-info">
@@ -302,6 +305,20 @@
   </div>
 </div>
 
+<!-- Modal: alterar senha -->
+<div class="mo" id="moChangePwd">
+  <div class="md" style="max-width:380px">
+    <div class="md-head"><h3>🔑 Alterar Senha</h3><button class="md-close" onclick="closeMo('moChangePwd')">✕</button></div>
+    <div class="fg"><label class="fl">Senha atual</label><input class="fi" type="password" id="cpCurrent" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="fg"><label class="fl">Nova senha</label><input class="fi" type="password" id="cpNew" placeholder="••••••••" autocomplete="new-password"></div>
+    <div class="fg"><label class="fl">Confirmar nova senha</label><input class="fi" type="password" id="cpConfirm" placeholder="••••••••" autocomplete="new-password"></div>
+    <div class="md-foot">
+      <button class="btn btn-ghost" onclick="closeMo('moChangePwd')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveChangePwd()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: consultant whatsapp -->
 <div class="mo" id="moConsultant">
   <div class="md" style="max-width:400px">
@@ -365,6 +382,24 @@ let token, user, consultants = [], allLeads = [], currentView = '', editingLeadI
 
 function go(url) { window.location.replace(url); }
 function logout() { localStorage.clear(); go('/'); }
+
+function openChangePwd() {
+  ['cpCurrent','cpNew','cpConfirm'].forEach(id => document.getElementById(id).value = '');
+  closeSidebar();
+  openMo('moChangePwd');
+}
+async function saveChangePwd() {
+  const current = document.getElementById('cpCurrent').value;
+  const nw      = document.getElementById('cpNew').value;
+  const confirm = document.getElementById('cpConfirm').value;
+  if (!current || !nw) return toast('Preencha todos os campos', 'error');
+  if (nw !== confirm)  return toast('As senhas não coincidem', 'error');
+  if (nw.length < 6)   return toast('Senha deve ter ao menos 6 caracteres', 'error');
+  const r = await api('/api/auth/change-password', { method:'POST', body: JSON.stringify({ currentPassword: current, newPassword: nw }) });
+  if (r?.error) return toast(r.error, 'error');
+  closeMo('moChangePwd');
+  toast('Senha alterada com sucesso!', 'success');
+}
 
 // ── Navigation ───────────────────────────────────────────────────────────────
 function buildNav() {
