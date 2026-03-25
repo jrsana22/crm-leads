@@ -14,9 +14,38 @@
       --green:#22c55e;--yellow:#f59e0b;--blue:#3b82f6;--red:#ef4444;--sw:240px;
     }
     [data-theme="light"]{
-      --bg:#f0f2f8;--surface:#ffffff;--surface2:#e8ecf5;--border:rgba(0,0,0,0.08);
-      --text:#1a1d2e;--muted:rgba(0,0,0,0.45);--pl:rgba(22,72,204,0.08);
+      --bg:#f0f2f8;--surface:#ffffff;--surface2:#edf0f7;--border:rgba(0,0,0,0.09);
+      --text:#111827;--muted:rgba(0,0,0,0.52);--pl:rgba(22,72,204,0.08);
+      --green:#16a34a;--yellow:#b45309;--blue:#1d4ed8;--red:#b91c1c;
     }
+    /* Light theme overrides */
+    [data-theme="light"] td{border-bottom-color:rgba(0,0,0,0.05)}
+    [data-theme="light"] tr:hover td{background:rgba(0,0,0,0.02)}
+    [data-theme="light"] .badge.cotacao{background:rgba(29,78,216,.1);color:#1d4ed8}
+    [data-theme="light"] .badge.negociacao{background:rgba(180,83,9,.1);color:#b45309}
+    [data-theme="light"] .badge.fechado{background:rgba(22,163,74,.1);color:#16a34a}
+    [data-theme="light"] .badge.perdido{background:rgba(185,28,28,.1);color:#b91c1c}
+    [data-theme="light"] .badge.manager{background:rgba(180,83,9,.1);color:#b45309}
+    [data-theme="light"] .badge.consultor{background:rgba(29,78,216,.1);color:#1d4ed8}
+    [data-theme="light"] .stat-value{color:#111827}
+    [data-theme="light"] .chip{color:#374151}
+    [data-theme="light"] .toast{box-shadow:0 4px 20px rgba(0,0,0,.1)}
+    [data-theme="light"] .nav-item{color:#4b5563}
+    [data-theme="light"] .nav-item:hover{color:#111827}
+    [data-theme="light"] .nav-item.active{color:var(--primary)}
+    [data-theme="light"] .lcard:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+    [data-theme="light"] .fi{border-color:rgba(0,0,0,0.12)}
+    [data-theme="light"] .fi:focus{border-color:rgba(22,72,204,.5)}
+    [data-theme="light"] .sinput{border-color:rgba(0,0,0,0.12)}
+    [data-theme="light"] .col-dot.cotacao{background:#1d4ed8}
+    [data-theme="light"] .col-dot.negociacao{background:#b45309}
+    [data-theme="light"] .col-dot.fechado{background:#16a34a}
+    [data-theme="light"] .col-dot.perdido{background:#b91c1c}
+    [data-theme="light"] .cs.cotacao{background:rgba(29,78,216,.1);color:#1d4ed8}
+    [data-theme="light"] .cs.negociacao{background:rgba(180,83,9,.1);color:#b45309}
+    [data-theme="light"] .cs.fechado{background:rgba(22,163,74,.1);color:#16a34a}
+    [data-theme="light"] .cs.perdido{background:rgba(185,28,28,.1);color:#b91c1c}
+    [data-theme="light"] .kcards.drag-over{background:rgba(22,72,204,.06);outline-color:rgba(22,72,204,.3)}
     body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
 
     /* Sidebar */
@@ -929,7 +958,7 @@ async function renderGestaoView() {
       <div style="padding:16px 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
         <div class="fg" style="margin:0;flex:1;min-width:160px">
           <label class="fl">De (origem)</label>
-          <select class="fi" id="gReassignFrom"></select>
+          <select class="fi" id="gReassignFrom" onchange="syncReassignTo('gReassignFrom','gReassignTo')"></select>
         </div>
         <div style="color:var(--muted);font-size:20px;padding-bottom:10px">→</div>
         <div class="fg" style="margin:0;flex:1;min-width:160px">
@@ -964,8 +993,19 @@ async function renderGestaoView() {
   const toEl   = document.getElementById('gReassignTo');
   if (fromEl && toEl) {
     fromEl.innerHTML = (consultants||[]).map(c => `<option value="${c.id}">${c.name}${c.active?'':' (inativo)'}</option>`).join('');
-    toEl.innerHTML   = (consultants||[]).filter(c => c.active).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    syncReassignTo('gReassignFrom', 'gReassignTo');
   }
+}
+
+function syncReassignTo(fromId, toId) {
+  const fromEl = document.getElementById(fromId);
+  const toEl   = document.getElementById(toId);
+  if (!fromEl || !toEl) return;
+  const excludeId = String(fromEl.value);
+  const prev = toEl.value;
+  toEl.innerHTML = consultants.filter(c => c.active && String(c.id) !== excludeId)
+    .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  if (prev && prev !== excludeId) toEl.value = prev;
 }
 
 async function gestaoReassign() {
@@ -1006,7 +1046,7 @@ async function renderAdminView() {
       <div style="padding:16px 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
         <div class="fg" style="margin:0;flex:1;min-width:160px">
           <label class="fl">De (origem)</label>
-          <select class="fi" id="reassignFrom"></select>
+          <select class="fi" id="reassignFrom" onchange="syncReassignTo('reassignFrom','reassignTo')"></select>
         </div>
         <div style="color:var(--muted);font-size:20px;padding-bottom:10px">→</div>
         <div class="fg" style="margin:0;flex:1;min-width:160px">
@@ -1053,9 +1093,8 @@ async function loadAdminData() {
   const fromEl = document.getElementById('reassignFrom');
   const toEl   = document.getElementById('reassignTo');
   if (fromEl && toEl) {
-    const opts = (consultants||[]).map(c => `<option value="${c.id}">${c.name}${c.active?'':' (inativo)'}</option>`).join('');
-    fromEl.innerHTML = opts;
-    toEl.innerHTML   = (consultants||[]).filter(c => c.active).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    fromEl.innerHTML = (consultants||[]).map(c => `<option value="${c.id}">${c.name}${c.active?'':' (inativo)'}</option>`).join('');
+    syncReassignTo('reassignFrom', 'reassignTo');
   }
 
   document.getElementById('uBody').innerHTML = (users||[]).map(u => `
