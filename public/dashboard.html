@@ -397,7 +397,7 @@ const STATUS_LABEL = { cotacao:'🔵 Cotação', negociacao:'🟡 Negociação',
 let kanbanDateFilter = 'mes';
 const ROLE_LABEL   = { admin:'⚙️ Admin', manager:'👔 Gerente', consultor:'🧑‍💼 Consultor(a)' };
 const ACTION_LABEL = { created:'Lead criado', status_changed:'Status alterado', reassigned:'Reatribuído', duplicate_blocked:'Duplicata bloqueada' };
-const PAGE_TITLES  = { overview:'Visão Geral', kanban:'Board CRM', leads:'Todos os Leads', activity:'Atividades', analise:'Análise & Ranking', admin:'Gerenciar Usuários' };
+const PAGE_TITLES  = { overview:'Visão Geral', kanban:'Board CRM', leads:'Todos os Leads', activity:'Atividades', analise:'Análise & Ranking', gestao:'Consultores', admin:'Usuários do Sistema' };
 
 // ── State ────────────────────────────────────────────────────────────────────
 let token, user, consultants = [], allLeads = [], currentView = '', editingLeadId = null, editingUserId = null, editingConsultantId = null, kanbanFilter = null;
@@ -500,9 +500,10 @@ function buildNav() {
   if (!isConsultor) {
     items.push({ id:'activity', icon:'🕐', label:'Atividades' });
     items.push({ id:'analise',  icon:'📈', label:'Análise & Ranking' });
+    items.push({ id:'gestao',   icon:'↗️', label:'Consultores', section:'Gestão' });
   }
   if (isAdmin) {
-    items.push({ id:'admin', icon:'⚙️', label:'Gerenciar Usuários', section:'Administração' });
+    items.push({ id:'admin', icon:'⚙️', label:'Usuários do Sistema' });
   }
 
   let html = '';
@@ -554,6 +555,7 @@ function switchView(name) {
   else if (name === 'leads') renderLeadsView();
   else if (name === 'activity') renderActivityView();
   else if (name === 'analise')  renderAnaliseView();
+  else if (name === 'gestao')   renderGestaoView();
   else if (name === 'admin') renderAdminView();
 }
 
@@ -912,6 +914,80 @@ async function renderActivityView() {
     : '<div class="empty"><div class="ei">📋</div><p>Nenhuma atividade</p></div>';
 }
 
+// ── Gestão de Consultores (manager + admin) ───────────────────────────────────
+async function renderGestaoView() {
+  document.getElementById('content').innerHTML = `
+    <div class="tw" style="margin-bottom:20px">
+      <div class="th"><h3>👥 Consultores</h3><span style="font-size:12px;color:var(--muted)">Ativar, desativar e editar WhatsApp</span></div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>Consultor(a)</th><th>WhatsApp</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="gCBody"></tbody>
+      </table></div>
+    </div>
+    <div class="tw">
+      <div class="th"><h3>↗️ Redistribuição de Leads</h3><span style="font-size:12px;color:var(--muted)">Transferir leads ativos de um consultor para outro</span></div>
+      <div style="padding:16px 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        <div class="fg" style="margin:0;flex:1;min-width:160px">
+          <label class="fl">De (origem)</label>
+          <select class="fi" id="gReassignFrom"></select>
+        </div>
+        <div style="color:var(--muted);font-size:20px;padding-bottom:10px">→</div>
+        <div class="fg" style="margin:0;flex:1;min-width:160px">
+          <label class="fl">Para (destino)</label>
+          <select class="fi" id="gReassignTo"></select>
+        </div>
+        <div class="fg" style="margin:0">
+          <label class="fl">Incluir status</label>
+          <div style="display:flex;gap:10px;padding:10px 0">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="gReassignCotacao" checked> Cotação</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="gReassignNegociacao" checked> Negociação</label>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="gestaoReassign()" style="margin-bottom:2px">Redistribuir</button>
+      </div>
+    </div>`;
+  const cs = await api('/api/consultants');
+  consultants = cs || consultants;
+
+  document.getElementById('gCBody').innerHTML = (consultants||[]).map((c,i) => `
+    <tr style="${!c.active?'opacity:0.55':''}">
+      <td><div style="display:flex;align-items:center;gap:10px"><div class="av ${AV[i%5]}" style="width:30px;height:30px;font-size:12px;border-radius:8px">${c.name[0]}</div><strong>${c.name}</strong></div></td>
+      <td style="font-family:monospace;font-size:13px">${c.whatsapp||'–'}</td>
+      <td>${c.active?'<span class="badge fechado">✅ Ativo</span>':'<span class="badge perdido">⏸ Inativo</span>'}</td>
+      <td><button class="btn btn-sm ${c.active?'btn-danger':'btn-ghost'}" onclick="toggleConsultantActive(${c.id},'${esc(c.name)}',${c.active})">${c.active?'⏸ Desativar':'▶ Ativar'}</button></td>
+    </tr>`).join('');
+
+  const fromEl = document.getElementById('gReassignFrom');
+  const toEl   = document.getElementById('gReassignTo');
+  if (fromEl && toEl) {
+    fromEl.innerHTML = (consultants||[]).map(c => `<option value="${c.id}">${c.name}${c.active?'':' (inativo)'}</option>`).join('');
+    toEl.innerHTML   = (consultants||[]).filter(c => c.active).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
+}
+
+async function gestaoReassign() {
+  const from = document.getElementById('gReassignFrom')?.value;
+  const to   = document.getElementById('gReassignTo')?.value;
+  if (!from || !to) return toast('Selecione os consultores', 'error');
+  if (from === to)  return toast('Origem e destino não podem ser o mesmo', 'error');
+  const statuses = [];
+  if (document.getElementById('gReassignCotacao')?.checked)    statuses.push('cotacao');
+  if (document.getElementById('gReassignNegociacao')?.checked) statuses.push('negociacao');
+  if (!statuses.length) return toast('Selecione ao menos um status', 'error');
+  const fromName = consultants.find(c => c.id == from)?.name || from;
+  const toName   = consultants.find(c => c.id == to)?.name   || to;
+  const ok = await showConfirm({
+    icon: '↗️', title: 'Confirmar redistribuição?',
+    msg: `Todos os leads de ${fromName} (${statuses.join(', ')}) serão transferidos para ${toName}.`,
+    okLabel: 'Redistribuir', okClass: 'btn-primary'
+  });
+  if (!ok) return;
+  const r = await api('/api/leads/bulk-reassign', { method:'POST', body:JSON.stringify({ from_consultant_id: parseInt(from), to_consultant_id: parseInt(to), statuses }) });
+  if (r?.error) return toast(r.error, 'error');
+  await refresh();
+  toast(`${r.count} lead${r.count!==1?'s':''} redistribuído${r.count!==1?'s':''}!`, 'success');
+}
+
 // ── Admin ────────────────────────────────────────────────────────────────────
 async function renderAdminView() {
   document.getElementById('content').innerHTML = `
@@ -1024,7 +1100,8 @@ async function toggleConsultantActive(id, name, currentlyActive) {
   const r = await api(`/api/consultants/${id}/toggle`, { method:'PATCH' });
   if (r?.error) return toast(r.error, 'error');
   await loadConsultants();
-  await loadAdminData();
+  if (currentView === 'admin') await loadAdminData();
+  else await renderGestaoView();
   toast(`${name} ${r.active ? 'ativado' : 'desativado'}!`, 'success');
 }
 

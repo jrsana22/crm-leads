@@ -425,14 +425,16 @@ app.put('/api/consultants/:id', auth, adminOnly, (req, res) => {
   res.json({ success: true });
 });
 
-app.patch('/api/consultants/:id/toggle', auth, adminOnly, (req, res) => {
+app.patch('/api/consultants/:id/toggle', auth, (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'manager') return res.status(403).json({ error: 'Acesso restrito' });
   const c = db.prepare('SELECT * FROM consultants WHERE id=?').get(req.params.id);
   if (!c) return res.status(404).json({ error: 'Consultor não encontrado' });
   db.prepare('UPDATE consultants SET active=? WHERE id=?').run(c.active ? 0 : 1, req.params.id);
   res.json({ active: !c.active });
 });
 
-app.post('/api/leads/bulk-reassign', auth, adminOnly, (req, res) => {
+app.post('/api/leads/bulk-reassign', auth, (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'manager') return res.status(403).json({ error: 'Acesso restrito' });
   const { from_consultant_id, to_consultant_id, statuses } = req.body;
   if (!from_consultant_id || !to_consultant_id) return res.status(400).json({ error: 'Consultores obrigatórios' });
   const statusFilter = (statuses||['cotacao','negociacao']).map(()=>'?').join(',');
