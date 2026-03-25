@@ -15,8 +15,10 @@ const EVO_BASE = 'https://painelsana-evolution-api.mofsig.easypanel.host';
 const { mkdirSync } = require('fs');
 mkdirSync('./data', { recursive: true });
 const db = new DatabaseSync(process.env.DB_PATH || './data/crm.db');
-// Migration: add report_phone if not exists
+// Migrations
 try { db.exec("ALTER TABLE users ADD COLUMN report_phone TEXT"); } catch(_) {}
+try { db.exec("ALTER TABLE leads ADD COLUMN perda_motivo TEXT"); } catch(_) {}
+try { db.exec("ALTER TABLE leads ADD COLUMN closed_at DATETIME"); } catch(_) {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -343,15 +345,18 @@ app.patch('/api/leads/:id', auth, (req, res) => {
   if (!canSeeLead(req.user.role, req.user.consultant_id, lead.consultant_id))
     return res.status(403).json({ error: 'Acesso negado' });
 
-  const { status, notes, consultant_id } = req.body;
-  const valid = ['cotacao','negociacao','fechado'];
+  const { status, notes, consultant_id, perda_motivo } = req.body;
+  const valid = ['cotacao','negociacao','fechado','perdido'];
   const updates = ['updated_at = CURRENT_TIMESTAMP'];
   const p = [];
   if (status) {
     if (!valid.includes(status)) return res.status(400).json({ error: 'Status inválido' });
     updates.push('status=?'); p.push(status);
+    if ((status === 'fechado' || status === 'perdido') && lead.status !== status) { updates.push('closed_at=CURRENT_TIMESTAMP'); }
+    if (status !== 'fechado' && status !== 'perdido') { updates.push('closed_at=NULL'); }
     db.prepare('INSERT INTO activity_log (lead_id,action,detail) VALUES (?,?,?)').run(req.params.id,'status_changed',`Status → ${status}`);
   }
+  if (perda_motivo !== undefined) { updates.push('perda_motivo=?'); p.push(perda_motivo||null); }
   if (notes !== undefined) { updates.push('notes=?'); p.push(notes); }
   if (consultant_id && req.user.role !== 'consultor') {
     updates.push('consultant_id=?'); p.push(consultant_id);
@@ -415,6 +420,26 @@ app.put('/api/consultants/:id', auth, adminOnly, (req, res) => {
   if (name) db.prepare('UPDATE consultants SET name=?, whatsapp=? WHERE id=?').run(name, phone, req.params.id);
   else       db.prepare('UPDATE consultants SET whatsapp=? WHERE id=?').run(phone, req.params.id);
   res.json({ success: true });
+});
+
+app.patch('/api/consultants/:id/toggle', auth, adminOnly, (req, res) => {
+  const c = db.prepare('SELECT * FROM consultants WHERE id=?').get(req.params.id);
+  if (!c) return res.status(404).json({ error: 'Consultor não encontrado' });
+  db.prepare('UPDATE consultants SET active=? WHERE id=?').run(c.active ? 0 : 1, req.params.id);
+  res.json({ active: !c.active });
+});
+
+app.post('/api/leads/bulk-reassign', auth, adminOnly, (req, res) => {
+  const { from_consultant_id, to_consultant_id, statuses } = req.body;
+  if (!from_consultant_id || !to_consultant_id) return res.status(400).json({ error: 'Consultores obrigatórios' });
+  const statusFilter = (statuses||['cotacao','negociacao']).map(()=>'?').join(',');
+  const leads = db.prepare(`SELECT id FROM leads WHERE consultant_id=? AND status IN (${statusFilter})`).all(from_consultant_id, ...(statuses||['cotacao','negociacao']));
+  const target = db.prepare('SELECT name FROM consultants WHERE id=?').get(to_consultant_id);
+  leads.forEach(l => {
+    db.prepare('UPDATE leads SET consultant_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(to_consultant_id, l.id);
+    db.prepare('INSERT INTO activity_log (lead_id,action,detail) VALUES (?,?,?)').run(l.id,'reassigned',`Redistribuído → ${target?.name}`);
+  });
+  res.json({ success: true, count: leads.length });
 });
 
 // ── Users (admin) ──────────────────────────────────────────────────────────────

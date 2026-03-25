@@ -79,16 +79,17 @@
     .cs.cotacao{background:rgba(59,130,246,.12);color:#60a5fa}
     .cs.negociacao{background:rgba(245,158,11,.12);color:#fbbf24}
     .cs.fechado{background:rgba(34,197,94,.12);color:#4ade80}
+    .cs.perdido{background:rgba(239,68,68,.12);color:#f87171}
 
     /* Kanban */
     .kanban-filters{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
     .chip{padding:6px 14px;border-radius:20px;font-size:13px;cursor:pointer;border:1px solid var(--border);color:var(--muted);background:var(--surface);transition:all .15s}
     .chip:hover,.chip.active{background:var(--primary);color:#fff;border-color:var(--primary)}
-    .kanban-board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+    .kanban-board{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:start}
     .kcol{background:var(--surface);border-radius:16px;overflow:hidden}
     .kcol-head{padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
     .col-dot{width:8px;height:8px;border-radius:50%}
-    .col-dot.cotacao{background:var(--blue)}.col-dot.negociacao{background:var(--yellow)}.col-dot.fechado{background:var(--green)}
+    .col-dot.cotacao{background:var(--blue)}.col-dot.negociacao{background:var(--yellow)}.col-dot.fechado{background:var(--green)}.col-dot.perdido{background:var(--red)}
     .kcol-head h3{font-size:14px;font-weight:600;flex:1}
     .col-cnt{background:var(--surface2);color:var(--muted);font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px}
     .kcards{padding:12px;padding-bottom:80px;display:flex;flex-direction:column;gap:10px;min-height:120px;transition:background .15s,outline .15s}
@@ -128,6 +129,7 @@
     .badge.cotacao{background:rgba(59,130,246,.15);color:#60a5fa}
     .badge.negociacao{background:rgba(245,158,11,.15);color:#fbbf24}
     .badge.fechado{background:rgba(34,197,94,.15);color:#4ade80}
+    .badge.perdido{background:rgba(239,68,68,.15);color:#f87171}
     .badge.admin{background:rgba(34,197,94,.15);color:#4ade80}
     .badge.manager{background:rgba(245,158,11,.15);color:#fbbf24}
     .badge.consultor{background:rgba(59,130,246,.15);color:#60a5fa}
@@ -194,7 +196,7 @@
       .kanban-board{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;padding-bottom:12px;-webkit-overflow-scrolling:touch}
       .kanban-board::-webkit-scrollbar{height:4px}
       .kanban-board::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-      .kcol{flex:0 0 82vw;scroll-snap-align:start;max-width:320px}
+      .kcol{flex:0 0 78vw;scroll-snap-align:start;max-width:300px}
       .kanban-filters{gap:6px}
       .chip{padding:5px 10px;font-size:12px}
       /* Table: hide secondary cols, bigger tap targets */
@@ -272,7 +274,8 @@
 <div class="mo" id="moEdit">
   <div class="md" style="max-width:420px">
     <div class="md-head"><h3>Editar Lead</h3><button class="md-close" onclick="closeMo('moEdit')">✕</button></div>
-    <div class="fg"><label class="fl">Status</label><select class="fi" id="eStatus"><option value="cotacao">Em Cotação</option><option value="negociacao">Em Negociação</option><option value="fechado">Fechado</option></select></div>
+    <div class="fg"><label class="fl">Status</label><select class="fi" id="eStatus" onchange="togglePerdaGroup()"><option value="cotacao">Em Cotação</option><option value="negociacao">Em Negociação</option><option value="fechado">Fechado</option><option value="perdido">Perdido</option></select></div>
+    <div class="fg" id="ePerdaGroup" style="display:none"><label class="fl">Motivo da perda</label><select class="fi" id="ePerdaMotivo"><option value="">Selecione…</option><option value="preco">Preço</option><option value="nao_atendeu">Não atendeu</option><option value="concorrente">Comprou com concorrente</option><option value="desistiu">Desistiu</option><option value="outro">Outro</option></select></div>
     <div class="fg" id="eConsultantGroup"><label class="fl">Consultor(a)</label><select class="fi" id="eConsultant"></select></div>
     <div class="fg"><label class="fl">Observações</label><textarea class="fi" id="eNotes" placeholder="Observações…"></textarea></div>
     <div class="md-foot">
@@ -362,12 +365,35 @@
   </div>
 </div>
 
+<!-- Modal: motivo perdido (drag & drop) -->
+<div class="mo" id="moPerdaMotivo">
+  <div class="md" style="max-width:360px">
+    <div class="md-head"><h3>🔴 Lead Perdido</h3><button class="md-close" onclick="_perdaResolve(null)">✕</button></div>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:20px">Qual o motivo da perda deste lead?</p>
+    <div class="fg"><label class="fl">Motivo</label>
+      <select class="fi" id="perdaMotivoDrop">
+        <option value="">Selecione…</option>
+        <option value="preco">Preço</option>
+        <option value="nao_atendeu">Não atendeu</option>
+        <option value="concorrente">Comprou com concorrente</option>
+        <option value="desistiu">Desistiu</option>
+        <option value="outro">Outro</option>
+      </select>
+    </div>
+    <div class="md-foot">
+      <button class="btn btn-ghost" onclick="_perdaResolve(null)">Cancelar</button>
+      <button class="btn btn-danger" onclick="_perdaResolve(document.getElementById('perdaMotivoDrop').value)">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-wrap" id="toasts"></div>
 
 <script>
 // ── Constants ────────────────────────────────────────────────────────────────
 const AV = ['c0','c1','c2','c3','c4'];
-const STATUS_LABEL = { cotacao:'🔵 Cotação', negociacao:'🟡 Negociação', fechado:'🟢 Fechado' };
+const STATUS_LABEL = { cotacao:'🔵 Cotação', negociacao:'🟡 Negociação', fechado:'🟢 Fechado', perdido:'🔴 Perdido' };
+let kanbanDateFilter = 'mes';
 const ROLE_LABEL   = { admin:'⚙️ Admin', manager:'👔 Gerente', consultor:'🧑‍💼 Consultor(a)' };
 const ACTION_LABEL = { created:'Lead criado', status_changed:'Status alterado', reassigned:'Reatribuído', duplicate_blocked:'Duplicata bloqueada' };
 const PAGE_TITLES  = { overview:'Visão Geral', kanban:'Board CRM', leads:'Todos os Leads', activity:'Atividades', analise:'Análise & Ranking', admin:'Gerenciar Usuários' };
@@ -627,10 +653,19 @@ function renderKanbanView() {
   // Build kanban HTML once
   let filterHtml = '';
   if (!isConsultor) {
-    filterHtml = `<div class="kanban-filters">
-      <span style="font-size:13px;color:var(--muted);margin-right:4px">Filtrar:</span>
-      <button class="chip active" id="chip-all" onclick="setKanbanFilter(null)">Todos</button>
-      ${consultants.map(c=>`<button class="chip" id="chip-${c.id}" onclick="setKanbanFilter(${c.id})">${c.name}</button>`).join('')}
+    filterHtml = `<div class="kanban-filters" style="flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--muted);font-weight:500">Consultor:</span>
+        <button class="chip active" id="chip-all" onclick="setKanbanFilter(null)">Todos</button>
+        ${consultants.map(c=>`<button class="chip" id="chip-${c.id}" onclick="setKanbanFilter(${c.id})">${c.name}</button>`).join('')}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--muted);font-weight:500">Período:</span>
+        <button class="chip" id="kd-hoje" onclick="setKanbanDate('hoje')">Hoje</button>
+        <button class="chip" id="kd-semana" onclick="setKanbanDate('semana')">Esta semana</button>
+        <button class="chip active" id="kd-mes" onclick="setKanbanDate('mes')">Este mês</button>
+        <button class="chip" id="kd-tudo" onclick="setKanbanDate('tudo')">Tudo</button>
+      </div>
     </div>`;
   } else {
     const myC = consultants.find(c => c.id == user.consultant_id);
@@ -644,7 +679,7 @@ function renderKanbanView() {
   document.getElementById('content').innerHTML = `
     ${filterHtml}
     <div class="kanban-board">
-      ${['cotacao','negociacao','fechado'].map(s=>`
+      ${['cotacao','negociacao','fechado','perdido'].map(s=>`
         <div class="kcol">
           <div class="kcol-head"><span class="col-dot ${s}"></span><h3>${STATUS_LABEL[s].replace(/^. /,'')}</h3><span class="col-cnt" id="cnt-${s}">0</span></div>
           <div class="kcards" id="col-${s}" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,'${s}')"></div>
@@ -656,16 +691,37 @@ function renderKanbanView() {
 
 function setKanbanFilter(cid) {
   kanbanFilter = cid;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('[id^="chip-"]').forEach(c => c.classList.remove('active'));
   const target = cid ? document.getElementById(`chip-${cid}`) : document.getElementById('chip-all');
   if (target) target.classList.add('active');
   renderKanban();
 }
 
+function setKanbanDate(filter) {
+  kanbanDateFilter = filter;
+  document.querySelectorAll('[id^="kd-"]').forEach(c => c.classList.remove('active'));
+  const el = document.getElementById(`kd-${filter}`);
+  if (el) el.classList.add('active');
+  renderKanban();
+}
+
 function renderKanban() {
-  const cols = { cotacao:[], negociacao:[], fechado:[] };
+  const cols = { cotacao:[], negociacao:[], fechado:[], perdido:[] };
   const now = new Date();
-  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  // Compute date boundary from filter
+  let dateFrom = null;
+  if (kanbanDateFilter === 'hoje') {
+    dateFrom = now.toISOString().split('T')[0];
+  } else if (kanbanDateFilter === 'semana') {
+    const d = new Date(now);
+    const day = d.getDay(); // 0=sun
+    d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+    dateFrom = d.toISOString().split('T')[0];
+  } else if (kanbanDateFilter === 'mes') {
+    dateFrom = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+  }
+  // 'tudo' = no filter
 
   let filtered;
   if (user.role === 'consultor') {
@@ -676,14 +732,15 @@ function renderKanban() {
     filtered = allLeads;
   }
 
+  if (dateFrom) {
+    filtered = filtered.filter(l => (l.created_at||'').slice(0,10) >= dateFrom);
+  }
+
   filtered.forEach(l => {
-    if (!cols[l.status]) return;
-    // Coluna fechado: só exibe leads fechados no mês atual
-    if (l.status === 'fechado' && !(l.updated_at||'').startsWith(curMonth)) return;
-    cols[l.status].push(l);
+    if (cols[l.status] !== undefined) cols[l.status].push(l);
   });
 
-  ['cotacao','negociacao','fechado'].forEach(s => {
+  ['cotacao','negociacao','fechado','perdido'].forEach(s => {
     const cnt = document.getElementById(`cnt-${s}`);
     const col = document.getElementById(`col-${s}`);
     if (!cnt || !col) return;
@@ -780,6 +837,10 @@ async function openDetail(id) {
       <div class="di"><label>Consultor</label><span class="ctag ${cColor(lead.consultant_id)}" style="padding:4px 10px;border-radius:8px;font-size:13px">${lead.consultant_name}</span></div>
       <div class="di"><label>Criado em</label><span>${fmt(lead.created_at)}</span></div>
     </div>
+    <div class="drow">
+      <div class="di"><label>⏱ Tempo de resposta</label><span style="font-weight:600">${calcResponseTime(lead)}</span></div>
+      ${lead.perda_motivo ? `<div class="di"><label>Motivo da perda</label><span>${{preco:'Preço',nao_atendeu:'Não atendeu',concorrente:'Comprou com concorrente',desistiu:'Desistiu',outro:'Outro'}[lead.perda_motivo]||lead.perda_motivo}</span></div>` : ''}
+    </div>
     ${lead.notes?`<div class="fg"><label class="fl">Observações</label><div style="background:var(--surface2);padding:12px;border-radius:10px;font-size:13px">${esc(lead.notes)}</div></div>`:''}
     <div class="divider"></div>
     <div class="sec-title">Histórico</div>
@@ -793,15 +854,21 @@ async function openDetail(id) {
 }
 
 // ── Edit modal ───────────────────────────────────────────────────────────────
+function togglePerdaGroup() {
+  const s = document.getElementById('eStatus').value;
+  document.getElementById('ePerdaGroup').style.display = s === 'perdido' ? '' : 'none';
+}
+
 function openEdit(id) {
   editingLeadId = id;
   const lead = allLeads.find(l => l.id === id);
   if (!lead) return;
   document.getElementById('eStatus').value = lead.status;
+  document.getElementById('ePerdaMotivo').value = lead.perda_motivo || '';
   document.getElementById('eConsultant').value = lead.consultant_id;
   document.getElementById('eNotes').value = lead.notes || '';
-  // Consultors cannot reassign
   document.getElementById('eConsultantGroup').style.display = user.role === 'consultor' ? 'none' : '';
+  togglePerdaGroup();
   openMo('moEdit');
 }
 
@@ -813,6 +880,7 @@ async function saveEdit() {
     if (!ok) return;
   }
   const body = { status: newStatus, notes: document.getElementById('eNotes').value };
+  if (newStatus === 'perdido') body.perda_motivo = document.getElementById('ePerdaMotivo').value || null;
   if (user.role !== 'consultor') body.consultant_id = parseInt(document.getElementById('eConsultant').value);
   await api(`/api/leads/${editingLeadId}`, { method:'PATCH', body:JSON.stringify(body) });
   closeMo('moEdit');
@@ -844,11 +912,33 @@ async function renderActivityView() {
 async function renderAdminView() {
   document.getElementById('content').innerHTML = `
     <div class="tw" style="margin-bottom:20px">
-      <div class="th"><h3>📋 WhatsApp dos Consultores</h3><span style="font-size:12px;color:var(--muted)">Número que recebe o lead atribuído</span></div>
+      <div class="th"><h3>📋 Consultores</h3><span style="font-size:12px;color:var(--muted)">WhatsApp, status ativo e redistribuição</span></div>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th>Consultor(a)</th><th>WhatsApp</th><th>Status</th><th>Ação</th></tr></thead>
+        <thead><tr><th>Consultor(a)</th><th>WhatsApp</th><th>Status</th><th>Ações</th></tr></thead>
         <tbody id="cBody"></tbody>
       </table></div>
+    </div>
+    <div class="tw" style="margin-bottom:20px">
+      <div class="th"><h3>↗️ Redistribuição de Leads</h3><span style="font-size:12px;color:var(--muted)">Transferir leads ativos de um consultor para outro</span></div>
+      <div style="padding:16px 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        <div class="fg" style="margin:0;flex:1;min-width:160px">
+          <label class="fl">De (origem)</label>
+          <select class="fi" id="reassignFrom"></select>
+        </div>
+        <div style="color:var(--muted);font-size:20px;padding-bottom:10px">→</div>
+        <div class="fg" style="margin:0;flex:1;min-width:160px">
+          <label class="fl">Para (destino)</label>
+          <select class="fi" id="reassignTo"></select>
+        </div>
+        <div class="fg" style="margin:0">
+          <label class="fl">Incluir status</label>
+          <div style="display:flex;gap:10px;padding:10px 0">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="reassignCotacao" checked> Cotação</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="reassignNegociacao" checked> Negociação</label>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="bulkReassign()" style="margin-bottom:2px">Redistribuir</button>
+      </div>
     </div>
     <div class="tw">
       <div class="th"><h3>👥 Usuários do Sistema</h3></div>
@@ -866,12 +956,24 @@ async function loadAdminData() {
   consultants = cs || consultants;
 
   document.getElementById('cBody').innerHTML = (consultants||[]).map((c,i) => `
-    <tr>
+    <tr style="${!c.active?'opacity:0.55':''}">
       <td><div style="display:flex;align-items:center;gap:10px"><div class="av ${AV[i%5]}" style="width:30px;height:30px;font-size:12px;border-radius:8px">${c.name[0]}</div><strong>${c.name}</strong></div></td>
       <td style="font-family:monospace;font-size:13px">${c.whatsapp||'–'}</td>
-      <td>${c.whatsapp?'<span class="badge fechado">✅ Configurado</span>':'<span class="badge cotacao">⚠️ Sem número</span>'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="openConsultantModal(${c.id},'${c.name}','${c.whatsapp||''}')">✏️ ${c.whatsapp?'Editar':'Cadastrar'}</button></td>
+      <td>${c.active?'<span class="badge fechado">✅ Ativo</span>':'<span class="badge perdido">⏸ Inativo</span>'}</td>
+      <td><div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="openConsultantModal(${c.id},'${esc(c.name)}','${c.whatsapp||''}')">✏️ Editar</button>
+        <button class="btn btn-sm ${c.active?'btn-danger':'btn-ghost'}" onclick="toggleConsultantActive(${c.id},'${esc(c.name)}',${c.active})">${c.active?'⏸ Desativar':'▶ Ativar'}</button>
+      </div></td>
     </tr>`).join('');
+
+  // Populate reassign selects
+  const fromEl = document.getElementById('reassignFrom');
+  const toEl   = document.getElementById('reassignTo');
+  if (fromEl && toEl) {
+    const opts = (consultants||[]).map(c => `<option value="${c.id}">${c.name}${c.active?'':' (inativo)'}</option>`).join('');
+    fromEl.innerHTML = opts;
+    toEl.innerHTML   = (consultants||[]).filter(c => c.active).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
 
   document.getElementById('uBody').innerHTML = (users||[]).map(u => `
     <tr>
@@ -901,6 +1003,50 @@ async function saveConsultant() {
   await loadConsultants();
   await loadAdminData();
   toast('WhatsApp salvo!', 'success');
+}
+
+async function toggleConsultantActive(id, name, currentlyActive) {
+  const action = currentlyActive ? 'desativar' : 'ativar';
+  const ok = await showConfirm({
+    icon: currentlyActive ? '⏸' : '▶',
+    title: `${currentlyActive ? 'Desativar' : 'Ativar'} ${name}?`,
+    msg: currentlyActive
+      ? 'Este consultor não receberá novos leads na distribuição automática.'
+      : 'Este consultor voltará a receber leads na distribuição automática.',
+    okLabel: currentlyActive ? 'Desativar' : 'Ativar',
+    okClass: currentlyActive ? 'btn-danger' : 'btn-primary'
+  });
+  if (!ok) return;
+  const r = await api(`/api/consultants/${id}/toggle`, { method:'PATCH' });
+  if (r?.error) return toast(r.error, 'error');
+  await loadConsultants();
+  await loadAdminData();
+  toast(`${name} ${r.active ? 'ativado' : 'desativado'}!`, 'success');
+}
+
+async function bulkReassign() {
+  const from = document.getElementById('reassignFrom')?.value;
+  const to   = document.getElementById('reassignTo')?.value;
+  if (!from || !to) return toast('Selecione os consultores', 'error');
+  if (from === to)  return toast('Origem e destino não podem ser o mesmo', 'error');
+  const statuses = [];
+  if (document.getElementById('reassignCotacao')?.checked)    statuses.push('cotacao');
+  if (document.getElementById('reassignNegociacao')?.checked) statuses.push('negociacao');
+  if (!statuses.length) return toast('Selecione ao menos um status', 'error');
+  const fromName = consultants.find(c => c.id == from)?.name || from;
+  const toName   = consultants.find(c => c.id == to)?.name   || to;
+  const ok = await showConfirm({
+    icon: '↗️',
+    title: 'Confirmar redistribuição?',
+    msg: `Todos os leads de ${fromName} (${statuses.join(', ')}) serão transferidos para ${toName}.`,
+    okLabel: 'Redistribuir',
+    okClass: 'btn-primary'
+  });
+  if (!ok) return;
+  const r = await api('/api/leads/bulk-reassign', { method:'POST', body:JSON.stringify({ from_consultant_id: parseInt(from), to_consultant_id: parseInt(to), statuses }) });
+  if (r?.error) return toast(r.error, 'error');
+  await refresh();
+  toast(`${r.count} lead${r.count!==1?'s':''} redistribuído${r.count!==1?'s':''}!`, 'success');
 }
 
 // User modal
@@ -1142,6 +1288,16 @@ function exportAnalisePDF() {
   win.document.close();
 }
 
+// ── Perdido motivo prompt ─────────────────────────────────────────────────────
+let _perdaResolve = () => {};
+function showPerdaMotivo() {
+  document.getElementById('perdaMotivoDrop').value = '';
+  openMo('moPerdaMotivo');
+  return new Promise(res => {
+    _perdaResolve = (val) => { closeMo('moPerdaMotivo'); res(val); };
+  });
+}
+
 // ── Drag & Drop ──────────────────────────────────────────────────────────────
 let _dragId = null;
 
@@ -1178,16 +1334,43 @@ async function dragDrop(e, status) {
   if (!id) return;
   const lead = allLeads.find(l => l.id === id);
   if (!lead || lead.status === status) return;
-  if (lead.status === 'fechado') {
+  if (lead.status === 'fechado' && status !== 'perdido') {
     const ok = await showConfirm({ icon:'🔓', title:'Reabrir lead fechado?', msg:`Este lead já foi fechado. Deseja mover para "${STATUS_LABEL[status].replace(/^\S+ /,'')}"?`, okLabel:'Sim, reabrir', okClass:'btn-primary' });
     if (!ok) return;
   }
-  await api(`/api/leads/${id}`, { method:'PATCH', body:JSON.stringify({ status }) });
+  let perda_motivo = undefined;
+  if (status === 'perdido') {
+    const motivo = await showPerdaMotivo();
+    if (motivo === null) return; // cancelled
+    perda_motivo = motivo || null;
+  }
+  const body = { status };
+  if (perda_motivo !== undefined) body.perda_motivo = perda_motivo;
+  await api(`/api/leads/${id}`, { method:'PATCH', body:JSON.stringify(body) });
   await refresh();
   toast(`Movido para ${STATUS_LABEL[status].replace(/^\S+ /,'')}`, 'success');
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+function calcResponseTime(lead) {
+  const toDate = s => s ? new Date(String(s).replace(' ','T') + (String(s).includes('Z')||String(s).includes('+') ? '' : 'Z')) : null;
+  const created = toDate(lead.created_at);
+  if (!created) return '–';
+  const isOpen = lead.status === 'cotacao' || lead.status === 'negociacao';
+  const end = toDate(lead.closed_at) || (isOpen ? new Date() : toDate(lead.updated_at));
+  const ms = end - created;
+  if (ms < 0) return '–';
+  const totalH = Math.floor(ms / 3600000);
+  const d = Math.floor(totalH / 24);
+  const h = totalH % 24;
+  const m = Math.floor((ms % 3600000) / 60000);
+  let str = '';
+  if (d > 0) str = `${d}d ${h}h`;
+  else if (h > 0) str = `${h}h ${m}min`;
+  else str = `${m}min`;
+  return isOpen ? `${str} em aberto` : str;
+}
+
 function cColor(consultantId) {
   const idx = consultants.findIndex(c => c.id == consultantId);
   return AV[idx >= 0 ? idx % 5 : 0];
@@ -1290,11 +1473,17 @@ document.addEventListener('touchend', async e => {
     const status = col.id.replace('col-', '');
     const lead = allLeads.find(l => l.id === _touchId);
     if (lead && lead.status !== status) {
-      if (lead.status === 'fechado') {
+      if (lead.status === 'fechado' && status !== 'perdido') {
         const ok = await showConfirm({ icon:'🔓', title:'Reabrir lead fechado?', msg:`Este lead já foi fechado. Deseja mover para "${STATUS_LABEL[status].replace(/^\S+ /,'')}"?`, okLabel:'Sim, reabrir', okClass:'btn-primary' });
         if (!ok) { _touchId = null; return; }
       }
-      await api(`/api/leads/${_touchId}`, { method:'PATCH', body:JSON.stringify({ status }) });
+      let body = { status };
+      if (status === 'perdido') {
+        const motivo = await showPerdaMotivo();
+        if (motivo === null) { _touchId = null; return; }
+        body.perda_motivo = motivo || null;
+      }
+      await api(`/api/leads/${_touchId}`, { method:'PATCH', body:JSON.stringify(body) });
       await refresh();
       toast(`Movido para ${STATUS_LABEL[status].replace(/^\S+ /,'')}`, 'success');
     }
