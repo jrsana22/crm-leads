@@ -1068,7 +1068,7 @@ function cColor(consultantId) {
 }
 
 function leadCardHtml(l, showEdit = false) {
-  return `<div class="lcard" draggable="true" ondragstart="dragStart(event,${l.id})" ondragend="dragEnd(event)" onclick="openDetail(${l.id})">
+  return `<div class="lcard" draggable="true" ondragstart="dragStart(event,${l.id})" ondragend="dragEnd(event)" ondragover="event.preventDefault()" onclick="openDetail(${l.id})">
     <div class="lcard-name">
       ${esc(l.name)}
       <div style="display:flex;gap:6px;flex-shrink:0">
