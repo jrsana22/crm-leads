@@ -13,6 +13,10 @@
       --text:#e8eaf0;--muted:rgba(255,255,255,0.4);--primary:#1648cc;--pl:rgba(22,72,204,0.15);
       --green:#22c55e;--yellow:#f59e0b;--blue:#3b82f6;--red:#ef4444;--sw:240px;
     }
+    [data-theme="light"]{
+      --bg:#f0f2f8;--surface:#ffffff;--surface2:#e8ecf5;--border:rgba(0,0,0,0.08);
+      --text:#1a1d2e;--muted:rgba(0,0,0,0.45);--pl:rgba(22,72,204,0.08);
+    }
     body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
 
     /* Sidebar */
@@ -222,8 +226,9 @@
   </div>
   <nav class="sb-nav" id="sbNav"></nav>
   <div class="sb-foot">
-    <div style="padding:0 12px 8px">
-      <button class="btn btn-ghost btn-sm" style="width:100%;font-size:12px;justify-content:center" onclick="openChangePwd()">🔑 Alterar senha</button>
+    <div style="padding:0 12px 8px;display:flex;gap:6px">
+      <button class="btn btn-ghost btn-sm" style="flex:1;font-size:12px;justify-content:center" onclick="openChangePwd()">🔑 Alterar senha</button>
+      <button class="btn btn-ghost btn-sm" id="themeBtn" style="font-size:15px;padding:5px 10px" onclick="toggleTheme()" title="Alternar tema"></button>
     </div>
     <div class="user-row" onclick="logout()">
       <div class="av c0" id="sbAv">A</div>
@@ -396,6 +401,21 @@ let token, user, consultants = [], allLeads = [], currentView = '', editingLeadI
 
 function go(url) { window.location.replace(url); }
 function logout() { localStorage.clear(); go('/'); }
+
+// ── Tema dark/light ──────────────────────────────────────────────────────────
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('themeBtn');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  localStorage.setItem('crm_theme', next);
+  applyTheme(next);
+}
+// Aplica tema salvo ao carregar
+applyTheme(localStorage.getItem('crm_theme') || 'dark');
 
 // ── Confirm modal ────────────────────────────────────────────────────────────
 let _confirmResolve = () => {};
