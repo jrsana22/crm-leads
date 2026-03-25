@@ -226,10 +226,10 @@
       <div class="fg"><label class="fl">Usuário (login)</label><input class="fi" type="text" id="uUser" placeholder="joao.silva" autocomplete="off"></div>
       <div class="fg"><label class="fl">Senha</label><input class="fi" type="password" id="uPass" placeholder="••••••••" autocomplete="new-password"></div>
     </div>
-    <div class="fg"><label class="fl">Cargo</label>
+    <div class="fg"><label class="fl">Perfil de acesso</label>
       <select class="fi" id="uRole" onchange="toggleURole()">
         <option value="consultor">Consultor</option>
-        <option value="manager">Gerente</option>
+        <option value="manager">Visão geral</option>
       </select>
     </div>
     <div class="fg" id="uLinkGroup"><label class="fl">Consultor Vinculado</label>
@@ -291,7 +291,7 @@ let token, user, consultants = [], allLeads = [], currentView = '', editingLeadI
 
     document.getElementById('sbAv').textContent = (user.name||user.username)[0].toUpperCase();
     document.getElementById('sbName').textContent = user.name || user.username;
-    document.getElementById('sbRole').textContent = ROLE_LABEL[user.role] || user.role;
+    document.getElementById('sbRole').textContent = user.role === 'admin' ? '⚙️ Admin' : '';
 
     buildNav();
     await loadConsultants();
@@ -671,7 +671,7 @@ async function renderAdminView() {
     <div class="tw">
       <div class="th"><h3>👥 Usuários do Sistema</h3></div>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th>Nome</th><th>Usuário</th><th>Cargo</th><th>WhatsApp</th><th>Evo API</th><th>Criado em</th><th>Ações</th></tr></thead>
+        <thead><tr><th>Nome</th><th>Usuário</th><th>WhatsApp</th><th>Evo API</th><th>Criado em</th><th>Ações</th></tr></thead>
         <tbody id="uBody"></tbody>
       </table></div>
     </div>`;
@@ -695,7 +695,6 @@ async function loadAdminData() {
     <tr>
       <td><strong>${esc(u.name||'–')}</strong>${u.consultant_name?`<br><span style="font-size:11px;color:var(--muted)">🔗 ${u.consultant_name}</span>`:''}</td>
       <td style="color:var(--muted)">${u.username}</td>
-      <td><span class="badge ${u.role}">${ROLE_LABEL[u.role]||u.role}</span></td>
       <td style="font-size:12px;color:var(--muted)">${u.evo_phone||'–'}</td>
       <td style="font-size:12px;color:var(--muted)">${u.evo_instance?`${u.evo_instance} ${u.has_evo_key?'<span style="color:var(--green)">🔑</span>':''}`:u.has_evo_key?'<span style="color:var(--green)">🔑 Configurado</span>':'–'}</td>
       <td style="font-size:12px;color:var(--muted)">${fmt(u.created_at)}</td>
