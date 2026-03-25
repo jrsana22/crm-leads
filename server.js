@@ -312,7 +312,9 @@ app.get('/api/consultants', auth, (req, res) => {
 });
 app.put('/api/consultants/:id', auth, adminOnly, (req, res) => {
   const phone = (req.body.whatsapp || '').toString().replace(/\D/g,'') || null;
-  db.prepare('UPDATE consultants SET whatsapp=? WHERE id=?').run(phone, req.params.id);
+  const name  = (req.body.name || '').trim();
+  if (name) db.prepare('UPDATE consultants SET name=?, whatsapp=? WHERE id=?').run(name, phone, req.params.id);
+  else       db.prepare('UPDATE consultants SET whatsapp=? WHERE id=?').run(phone, req.params.id);
   res.json({ success: true });
 });
 

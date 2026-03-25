@@ -258,7 +258,7 @@
   <div class="md" style="max-width:420px">
     <div class="md-head"><h3>Editar Lead</h3><button class="md-close" onclick="closeMo('moEdit')">✕</button></div>
     <div class="fg"><label class="fl">Status</label><select class="fi" id="eStatus"><option value="cotacao">Em Cotação</option><option value="negociacao">Em Negociação</option><option value="fechado">Fechado</option></select></div>
-    <div class="fg" id="eConsultantGroup"><label class="fl">Consultor</label><select class="fi" id="eConsultant"></select></div>
+    <div class="fg" id="eConsultantGroup"><label class="fl">Consultor(a)</label><select class="fi" id="eConsultant"></select></div>
     <div class="fg"><label class="fl">Observações</label><textarea class="fi" id="eNotes" placeholder="Observações…"></textarea></div>
     <div class="md-foot">
       <button class="btn btn-ghost" onclick="closeMo('moEdit')">Cancelar</button>
@@ -282,7 +282,7 @@
         <option value="manager">Visão geral</option>
       </select>
     </div>
-    <div class="fg" id="uLinkGroup"><label class="fl">Consultor</label>
+    <div class="fg" id="uLinkGroup"><label class="fl">Consultor(a)</label>
       <select class="fi" id="uConsultantId"><option value="">Selecione…</option></select>
     </div>
     <div id="uEvoSection">
@@ -304,9 +304,11 @@
 <!-- Modal: consultant whatsapp -->
 <div class="mo" id="moConsultant">
   <div class="md" style="max-width:400px">
-    <div class="md-head"><h3 id="cTitle">WhatsApp do(a) Consultor(a)</h3><button class="md-close" onclick="closeMo('moConsultant')">✕</button></div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Número que receberá o lead assim que for atribuído a este consultor.</p>
-    <div class="fg"><label class="fl">Número (com DDI+DDD)</label>
+    <div class="md-head"><h3 id="cTitle">Editar Consultor(a)</h3><button class="md-close" onclick="closeMo('moConsultant')">✕</button></div>
+    <div class="fg"><label class="fl">Nome completo</label>
+      <input class="fi" type="text" id="cName" placeholder="Ex: Fabiano Souza" autocomplete="off">
+    </div>
+    <div class="fg"><label class="fl">WhatsApp (com DDI+DDD)</label>
       <input class="fi" type="tel" id="cPhone" placeholder="5531999999999" autocomplete="off" inputmode="numeric">
       <span style="font-size:11px;color:var(--muted);margin-top:4px;display:block">Ex: 5531999990001</span>
     </div>
@@ -604,7 +606,7 @@ function renderLeadsView() {
         <table>
           <thead><tr>
             <th>#</th><th>Nome</th><th>WhatsApp</th><th>Placa</th>
-            ${user.role!=='consultor'?'<th>Consultor</th>':''}
+            ${user.role!=='consultor'?'<th>Consultor(a)</th>':''}
             <th>Status</th><th>Data</th><th>Ações</th>
           </tr></thead>
           <tbody id="leadsBody"></tbody>
@@ -722,7 +724,7 @@ async function renderAdminView() {
     <div class="tw" style="margin-bottom:20px">
       <div class="th"><h3>📋 WhatsApp dos Consultores</h3><span style="font-size:12px;color:var(--muted)">Número que recebe o lead atribuído</span></div>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th>Consultor</th><th>WhatsApp</th><th>Status</th><th>Ação</th></tr></thead>
+        <thead><tr><th>Consultor(a)</th><th>WhatsApp</th><th>Status</th><th>Ação</th></tr></thead>
         <tbody id="cBody"></tbody>
       </table></div>
     </div>
@@ -766,12 +768,13 @@ async function loadAdminData() {
 // Consultant modal
 function openConsultantModal(id, name, phone) {
   editingConsultantId = id;
-  document.getElementById('cTitle').textContent = `WhatsApp — ${name}`;
+  document.getElementById('cTitle').textContent = `Editar — ${name}`;
+  document.getElementById('cName').value = name || '';
   document.getElementById('cPhone').value = phone || '';
   openMo('moConsultant');
 }
 async function saveConsultant() {
-  await api(`/api/consultants/${editingConsultantId}`, { method:'PUT', body:JSON.stringify({ whatsapp: document.getElementById('cPhone').value }) });
+  await api(`/api/consultants/${editingConsultantId}`, { method:'PUT', body:JSON.stringify({ name: document.getElementById('cName').value, whatsapp: document.getElementById('cPhone').value }) });
   closeMo('moConsultant');
   await loadConsultants();
   await loadAdminData();
@@ -886,7 +889,7 @@ async function loadAnalise() {
     <div class="tw">
       <div class="th"><h3>🏆 Ranking de Fechamentos</h3><span style="font-size:12px;color:var(--muted)">Ordenado por leads fechados no período</span></div>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th style="width:50px">#</th><th>Consultor</th><th>🟢 Fechados</th><th>🟡 Negociação</th><th>🔵 Cotação</th><th>Total</th></tr></thead>
+        <thead><tr><th style="width:50px">#</th><th>Consultor(a)</th><th>🟢 Fechados</th><th>🟡 Negociação</th><th>🔵 Cotação</th><th>Total</th></tr></thead>
         <tbody>${(data.ranking||[]).map((c,i) => `
           <tr style="${i===0?'background:rgba(108,99,255,.05)':''}">
             <td style="font-size:${i<3?'22':'14'}px;text-align:center">${medals[i]||`${i+1}º`}</td>
