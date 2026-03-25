@@ -80,17 +80,49 @@ if (!db.prepare("SELECT id FROM users WHERE username = 'gerente'").get()) {
   console.log('✅ Gerente criado: gerente / gerente123');
 }
 
+// ── Security headers ───────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
+// ── Rate limiting (in-memory) ──────────────────────────────────────────────────
+const _rl = new Map();
+function rateLimit(max, windowMs) {
+  return (req, res, next) => {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+    const key = `${ip}:${req.path}`;
+    const now = Date.now();
+    const hits = (_rl.get(key) || []).filter(t => now - t < windowMs);
+    hits.push(now);
+    _rl.set(key, hits);
+    if (hits.length > max) return res.status(429).json({ error: 'Muitas tentativas. Aguarde alguns minutos.' });
+    next();
+  };
+}
+// Clean rate store every 10 minutes
+setInterval(() => { const now = Date.now(); _rl.forEach((v,k) => { if (!v.some(t => now-t < 600000)) _rl.delete(k); }); }, 600000);
+
 // ── Middleware ─────────────────────────────────────────────────────────────────
-app.use(cors());
-app.use(express.json());
-app.use((_, res, next) => { res.setHeader('Cache-Control','no-store'); next(); });
+app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
+app.use(express.json({ limit: '50kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 function auth(req, res, next) {
   const h = req.headers.authorization;
   if (!h) return res.status(401).json({ error: 'Não autorizado' });
-  try { req.user = jwt.verify(h.split(' ')[1], JWT_SECRET); next(); }
-  catch { res.status(401).json({ error: 'Token inválido' }); }
+  try {
+    req.user = jwt.verify(h.split(' ')[1], JWT_SECRET);
+    next();
+  } catch(e) {
+    const msg = e.name === 'TokenExpiredError' ? 'Sessão expirada' : 'Token inválido';
+    res.status(401).json({ error: msg });
+  }
 }
 
 function adminOnly(req, res, next) {
@@ -104,7 +136,7 @@ function canSeeLead(userRole, userConsultantId, leadConsultantId) {
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', rateLimit(10, 60000), (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Preencha usuário e senha' });
   const u = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
@@ -118,8 +150,14 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // ── Webhook ────────────────────────────────────────────────────────────────────
-app.post('/webhook', async (req, res) => {
+app.post('/webhook', rateLimit(60, 60000), async (req, res) => {
   try {
+    // Verificar chave secreta se configurada
+    const secret = process.env.WEBHOOK_SECRET;
+    if (secret) {
+      const provided = req.headers['x-webhook-secret'] || req.query.secret;
+      if (provided !== secret) return res.status(401).json({ error: 'Chave de webhook inválida' });
+    }
     const d = req.body;
     const name  = (d.name  || d.nome  || d.Name  || d.NOME  || '').trim();
     const phone = (d.phone || d.telefone || d.whatsapp || d.Phone || d.celular || '').toString().replace(/\D/g,'');
