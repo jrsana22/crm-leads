@@ -369,7 +369,8 @@ app.patch('/api/leads/:id', auth, (req, res) => {
   res.json(db.prepare('SELECT l.*, c.name as consultant_name FROM leads l JOIN consultants c ON l.consultant_id=c.id WHERE l.id=?').get(req.params.id));
 });
 
-app.delete('/api/leads/:id', auth, adminOnly, (req, res) => {
+app.delete('/api/leads/:id', auth, (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'manager') return res.status(403).json({ error: 'Acesso restrito' });
   db.prepare('DELETE FROM activity_log WHERE lead_id=?').run(req.params.id);
   db.prepare('DELETE FROM leads WHERE id=?').run(req.params.id);
   res.json({ success: true });

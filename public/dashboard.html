@@ -441,7 +441,7 @@ let token, user, consultants = [], allLeads = [], currentView = '', editingLeadI
 
     document.getElementById('sbAv').textContent = (user.name||user.username)[0].toUpperCase();
     document.getElementById('sbName').textContent = user.name || user.username;
-    document.getElementById('sbRole').textContent = user.role === 'admin' ? '⚙️ Admin' : '';
+    document.getElementById('sbRole').textContent = user.role === 'admin' ? '⚙️ Admin' : user.role === 'manager' ? '👔 Gerente' : '';
 
     buildNav();
     await loadConsultants();
@@ -553,12 +553,8 @@ function buildNav() {
   nav.innerHTML = html;
 
   // Top action button
-  if (user.role === 'admin') {
-    topActions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="refresh()">🔄 Atualizar</button>
-      <button class="btn btn-primary btn-sm" id="btnAddUser" style="display:none" onclick="openUserModal()">+ Novo Usuário</button>`;
-  } else {
-    topActions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="refresh()">🔄 Atualizar</button>`;
-  }
+  topActions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="refresh()">🔄 Atualizar</button>
+    ${user.role === 'admin' ? `<button class="btn btn-primary btn-sm" id="btnAddUser" style="display:none" onclick="openUserModal()">+ Novo Usuário</button>` : ''}`;
 
   // Default view
   const firstView = items[0].id;
@@ -787,7 +783,7 @@ function renderKanban() {
 
 // ── Leads table ──────────────────────────────────────────────────────────────
 function renderLeadsView() {
-  const isAdmin = user.role === 'admin';
+  const isAdmin = user.role === 'admin' || user.role === 'manager';
   const consultantCol = user.role !== 'consultor' ? `
     <div class="fg" style="width:160px">
       <select class="sinput" id="fConsultant" onchange="applyFilters()" style="width:160px">
@@ -833,7 +829,7 @@ function applyFilters() {
     (!status || l.status === status) &&
     (!cid    || l.consultant_id == cid)
   );
-  const isAdmin = user.role === 'admin';
+  const isAdmin = user.role === 'admin' || user.role === 'manager';
   const body = document.getElementById('leadsBody');
   if (!body) return;
   body.innerHTML = rows.length ? rows.map(l => `
@@ -885,7 +881,7 @@ async function openDetail(id) {
         <span class="act-time">${fmt(a.created_at)}</span>
       </div>`).join('') || '<p style="color:var(--muted);font-size:13px">Sem histórico</p>'}
   `;
-  if (user.role === 'admin') {
+  if (user.role === 'admin' || user.role === 'manager') {
     document.getElementById('detailFoot').innerHTML =
       `<button class="btn btn-danger" onclick="deleteLead(${lead.id});closeMo('moDetail')">🗑 Excluir lead</button>
        <button class="btn btn-ghost" onclick="closeMo('moDetail')">Fechar</button>`;
@@ -1514,7 +1510,7 @@ function cColor(consultantId) {
 }
 
 function leadCardHtml(l, showEdit = false) {
-  const isAdmin = user.role === 'admin';
+  const isAdmin = user.role === 'admin' || user.role === 'manager';
   return `<div class="lcard" draggable="true" ondragstart="dragStart(event,${l.id})" ondragend="dragEnd(event)" ondragover="event.preventDefault()" onclick="openDetail(${l.id})">
     <div class="lcard-name">
       ${esc(l.name)}
