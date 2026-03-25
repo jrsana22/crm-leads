@@ -91,6 +91,7 @@
     .lcard[draggable="true"]{cursor:grab}
     .lcard[draggable="true"]:active{cursor:grabbing}
     .lcard.is-dragging{opacity:.35;transform:scale(.97);pointer-events:none}
+    body.dragging-active .lcard:not(.is-dragging){pointer-events:none}
     .kcards.drag-over{background:rgba(108,99,255,.08);outline:2px dashed rgba(108,99,255,.45);border-radius:10px}
     .lcard{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all .15s}
     .lcard:hover{border-color:rgba(108,99,255,.4);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
@@ -998,11 +999,12 @@ function dragStart(e, id) {
   _dragId = id;
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', String(id));
-  setTimeout(() => e.target.classList.add('is-dragging'), 0);
+  setTimeout(() => { e.target.classList.add('is-dragging'); document.body.classList.add('dragging-active'); }, 0);
 }
 
 function dragEnd(e) {
   e.target.classList.remove('is-dragging');
+  document.body.classList.remove('dragging-active');
   document.querySelectorAll('.kcards.drag-over').forEach(el => el.classList.remove('drag-over'));
   _dragId = null;
 }
