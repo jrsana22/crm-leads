@@ -44,7 +44,7 @@
 
     /* Buttons */
     .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;border:none;transition:all .15s}
-    .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#5a52e0}
+    .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#1238a8}
     .btn-ghost{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{color:var(--text)}
     .btn-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}.btn-danger:hover{background:rgba(239,68,68,.25)}
     .btn-sm{padding:5px 10px;font-size:12px;border-radius:8px}
@@ -163,6 +163,52 @@
     .empty{text-align:center;padding:40px 20px;color:var(--muted)}
     .empty .ei{font-size:36px;margin-bottom:8px}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+    /* ── Mobile ─────────────────────────────────────────────────────────────── */
+    .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99;backdrop-filter:blur(2px)}
+    .hamburger{display:none;background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;border-radius:8px;line-height:1}
+    @media(max-width:768px){
+      .sb{transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:100}
+      .sb.open{transform:translateX(0)}
+      .sb-overlay.show{display:block}
+      .main{margin-left:0}
+      .hamburger{display:flex;align-items:center;justify-content:center}
+      .topbar{padding:0 14px;gap:10px}
+      .topbar h1{font-size:15px}
+      .content{padding:14px}
+      /* Stats 2 cols */
+      .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+      .stat-value{font-size:28px}
+      /* Kanban horizontal scroll */
+      .kanban-board{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;padding-bottom:12px;-webkit-overflow-scrolling:touch}
+      .kanban-board::-webkit-scrollbar{height:4px}
+      .kanban-board::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+      .kcol{flex:0 0 82vw;scroll-snap-align:start;max-width:320px}
+      .kanban-filters{gap:6px}
+      .chip{padding:5px 10px;font-size:12px}
+      /* Table: hide secondary cols, bigger tap targets */
+      .th{padding:12px 14px;gap:8px}
+      .sinput{width:100%!important}
+      td,th{padding:10px 12px}
+      table th:nth-child(4),table td:nth-child(4){display:none} /* plate */
+      table th:nth-child(6),table td:nth-child(6){display:none} /* date */
+      /* Modals as bottom sheets */
+      .mo{align-items:flex-end;padding:0}
+      .md{border-radius:20px 20px 0 0;max-width:100%!important;max-height:92vh;padding:20px}
+      /* Admin table responsive */
+      .grid2{grid-template-columns:1fr}
+      /* Consultant cards */
+      .consultants-grid{grid-template-columns:1fr}
+      /* Lead cards bigger tap */
+      .lcard{padding:16px}
+      .btn-sm{padding:8px 12px;font-size:13px}
+    }
+    @media(max-width:480px){
+      .stats-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+      .stat-card{padding:14px}
+      .stat-value{font-size:24px}
+      table th:nth-child(3),table td:nth-child(3){display:none} /* whatsapp */
+    }
   </style>
 </head>
 <body>
@@ -186,9 +232,12 @@
   </div>
 </aside>
 
+<div class="sb-overlay" id="sbOverlay" onclick="closeSidebar()"></div>
+
 <!-- Main -->
 <div class="main">
   <header class="topbar">
+    <button class="hamburger" id="hamburger" onclick="toggleSidebar()">☰</button>
     <h1 id="pageTitle">Carregando…</h1>
     <div style="display:flex;gap:10px" id="topActions"></div>
   </header>
@@ -928,6 +977,71 @@ function toast(msg, type='info') {
 }
 // Close modals on overlay click
 document.querySelectorAll('.mo').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); }));
+
+// ── Sidebar mobile ───────────────────────────────────────────────────────────
+function toggleSidebar() {
+  const sb = document.getElementById('sb');
+  const ov = document.getElementById('sbOverlay');
+  sb.classList.toggle('open');
+  ov.classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sb').classList.remove('open');
+  document.getElementById('sbOverlay').classList.remove('show');
+}
+// Close sidebar when nav item is tapped on mobile
+document.getElementById('sbNav').addEventListener('click', () => {
+  if (window.innerWidth <= 768) closeSidebar();
+});
+
+// ── Touch drag & drop ────────────────────────────────────────────────────────
+let _touchId = null, _touchClone = null;
+
+document.addEventListener('touchstart', e => {
+  const card = e.target.closest('.lcard[draggable]');
+  if (!card) return;
+  const m = (card.getAttribute('ondragstart')||'').match(/dragStart\(event,(\d+)\)/);
+  if (!m) return;
+  _touchId = parseInt(m[1]);
+  const r = card.getBoundingClientRect();
+  _touchClone = card.cloneNode(true);
+  _touchClone.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;opacity:.85;pointer-events:none;z-index:9999;transform:scale(1.04);transition:none;border-radius:12px`;
+  document.body.appendChild(_touchClone);
+  card.classList.add('is-dragging');
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  if (!_touchId || !_touchClone) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  const w = parseInt(_touchClone.style.width);
+  _touchClone.style.left = (t.clientX - w/2) + 'px';
+  _touchClone.style.top  = (t.clientY - 40) + 'px';
+  _touchClone.style.pointerEvents = 'none';
+  document.querySelectorAll('.kcards').forEach(c => c.classList.remove('drag-over'));
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  el?.closest('.kcards')?.classList.add('drag-over');
+}, { passive: false });
+
+document.addEventListener('touchend', async e => {
+  if (!_touchId) return;
+  const t = e.changedTouches[0];
+  if (_touchClone) { _touchClone.remove(); _touchClone = null; }
+  document.querySelectorAll('.lcard.is-dragging').forEach(c => c.classList.remove('is-dragging'));
+  document.querySelectorAll('.kcards.drag-over').forEach(c => c.classList.remove('drag-over'));
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  const col = el?.closest('.kcards');
+  if (col) {
+    const status = col.id.replace('col-', '');
+    const lead = allLeads.find(l => l.id === _touchId);
+    if (lead && lead.status !== status) {
+      await api(`/api/leads/${_touchId}`, { method:'PATCH', body:JSON.stringify({ status }) });
+      await refresh();
+      toast(`Movido para ${STATUS_LABEL[status].replace(/^\S+ /,'')}`, 'success');
+    }
+  }
+  _touchId = null;
+});
 </script>
 </body>
 </html>
