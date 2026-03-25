@@ -124,17 +124,18 @@ function buildReportText(titulo, periodo, dateFrom, dateTo, now) {
   const ranking  = db.prepare(`
     SELECT c.name,
       COUNT(l.id) as total,
-      SUM(CASE WHEN l.status='fechado'    THEN 1 ELSE 0 END) as fechados,
-      SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
+      SUM(CASE WHEN l.status='lead'       THEN 1 ELSE 0 END) as em_lead,
       SUM(CASE WHEN l.status='cotacao'    THEN 1 ELSE 0 END) as cotacao,
+      SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
+      SUM(CASE WHEN l.status='fechado'    THEN 1 ELSE 0 END) as fechados,
       SUM(CASE WHEN l.status='perdido'    THEN 1 ELSE 0 END) as perdidos
     FROM consultants c LEFT JOIN leads l ON c.id=l.consultant_id AND l.created_at BETWEEN ? AND ?
     WHERE c.active=1 GROUP BY c.id ORDER BY fechados DESC, total DESC
   `).all(from, to);
   const s = Object.fromEntries(byStatus.map(x => [x.status, x.count]));
   const medals = ['🥇','🥈','🥉'];
-  const rankLines = ranking.map((c,i) => `${medals[i]||`${i+1}º`} *${c.name}* — ${c.fechados||0} fechados | ${c.negociacao||0} negoc. | ${c.cotacao||0} cotação | ${c.perdidos||0} perdidos`).join('\n');
-  return `${titulo}\n📅 ${periodo} · Gerado às 19h\n\n━━━━━━━━━━━━━━━\n📥 *Total de leads:* ${total}\n🔵 Em Cotação: ${s.cotacao||0}\n🟡 Em Negociação: ${s.negociacao||0}\n🟢 Fechados: ${s.fechado||0}\n🔴 Perdidos: ${s.perdido||0}\n━━━━━━━━━━━━━━━\n\n🏆 *Ranking${rankLines ? '\n'+rankLines : ': sem dados'}`;
+  const rankLines = ranking.map((c,i) => `${medals[i]||`${i+1}º`} *${c.name}* — ${c.fechados||0} fechados | ${c.negociacao||0} negoc. | ${c.cotacao||0} cotação | ${c.em_lead||0} lead | ${c.perdidos||0} perdidos`).join('\n');
+  return `${titulo}\n📅 ${periodo} · Gerado às 19h\n\n━━━━━━━━━━━━━━━\n📥 *Total de leads:* ${total}\n⚪ Em Lead: ${s.lead||0}\n🔵 Em Cotação: ${s.cotacao||0}\n🟡 Em Negociação: ${s.negociacao||0}\n🟢 Fechados: ${s.fechado||0}\n🔴 Perdidos: ${s.perdido||0}\n━━━━━━━━━━━━━━━\n\n🏆 *Ranking${rankLines ? '\n'+rankLines : ': sem dados'}`;
 }
 
 async function sendReports(messages, evo, recipients) {
@@ -286,7 +287,7 @@ app.post('/webhook', rateLimit(60, 60000), async (req, res) => {
 
     const result = db.prepare(
       'INSERT INTO leads (name, phone, plate, consultant_id, status, raw_data) VALUES (?,?,?,?,?,?)'
-    ).run(name, phone, plate, consultant.id, 'cotacao', JSON.stringify(d));
+    ).run(name, phone, plate, consultant.id, 'lead', JSON.stringify(d));
     const leadId = result.lastInsertRowid;
     db.prepare('INSERT INTO activity_log (lead_id, action, detail) VALUES (?,?,?)').run(leadId, 'created', `Distribuído para ${consultant.name}`);
 
@@ -347,7 +348,7 @@ app.patch('/api/leads/:id', auth, (req, res) => {
     return res.status(403).json({ error: 'Acesso negado' });
 
   const { status, notes, consultant_id, perda_motivo } = req.body;
-  const valid = ['cotacao','negociacao','fechado','perdido'];
+  const valid = ['lead','cotacao','negociacao','fechado','perdido'];
   const updates = ['updated_at = CURRENT_TIMESTAMP'];
   const p = [];
   if (status) {
@@ -388,6 +389,7 @@ app.get('/api/stats', auth, (req, res) => {
     byConsultant = db.prepare(`
       SELECT c.id, c.name, c.order_index,
         COUNT(l.id) as total,
+        SUM(CASE WHEN l.status='lead' THEN 1 ELSE 0 END) as em_lead,
         SUM(CASE WHEN l.status='cotacao' THEN 1 ELSE 0 END) as cotacao,
         SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
         SUM(CASE WHEN l.status='fechado' THEN 1 ELSE 0 END) as fechado,
@@ -402,6 +404,7 @@ app.get('/api/stats', auth, (req, res) => {
     byConsultant = db.prepare(`
       SELECT c.id, c.name, c.order_index,
         COUNT(l.id) as total,
+        SUM(CASE WHEN l.status='lead' THEN 1 ELSE 0 END) as em_lead,
         SUM(CASE WHEN l.status='cotacao' THEN 1 ELSE 0 END) as cotacao,
         SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
         SUM(CASE WHEN l.status='fechado' THEN 1 ELSE 0 END) as fechado,
@@ -439,8 +442,8 @@ app.post('/api/leads/bulk-reassign', auth, (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'manager') return res.status(403).json({ error: 'Acesso restrito' });
   const { from_consultant_id, to_consultant_id, statuses } = req.body;
   if (!from_consultant_id || !to_consultant_id) return res.status(400).json({ error: 'Consultores obrigatórios' });
-  const statusFilter = (statuses||['cotacao','negociacao']).map(()=>'?').join(',');
-  const leads = db.prepare(`SELECT id FROM leads WHERE consultant_id=? AND status IN (${statusFilter})`).all(from_consultant_id, ...(statuses||['cotacao','negociacao']));
+  const statusFilter = (statuses||['lead','cotacao','negociacao']).map(()=>'?').join(',');
+  const leads = db.prepare(`SELECT id FROM leads WHERE consultant_id=? AND status IN (${statusFilter})`).all(from_consultant_id, ...(statuses||['lead','cotacao','negociacao']));
   const target = db.prepare('SELECT name FROM consultants WHERE id=?').get(to_consultant_id);
   leads.forEach(l => {
     db.prepare('UPDATE leads SET consultant_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(to_consultant_id, l.id);
@@ -518,9 +521,10 @@ app.get('/api/analytics', auth, (req, res) => {
   const ranking = db.prepare(`
     SELECT c.name, c.order_index,
       COUNT(l.id) as total,
-      SUM(CASE WHEN l.status='fechado'    THEN 1 ELSE 0 END) as fechados,
-      SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
+      SUM(CASE WHEN l.status='lead'       THEN 1 ELSE 0 END) as em_lead,
       SUM(CASE WHEN l.status='cotacao'    THEN 1 ELSE 0 END) as cotacao,
+      SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
+      SUM(CASE WHEN l.status='fechado'    THEN 1 ELSE 0 END) as fechados,
       SUM(CASE WHEN l.status='perdido'    THEN 1 ELSE 0 END) as perdidos
     FROM consultants c
     LEFT JOIN leads l ON c.id=l.consultant_id${dj}
@@ -546,9 +550,10 @@ app.post('/api/analytics/whatsapp', auth, async (req, res) => {
   const ranking  = db.prepare(`
     SELECT c.name,
       COUNT(l.id) as total,
-      SUM(CASE WHEN l.status='fechado'    THEN 1 ELSE 0 END) as fechados,
-      SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
+      SUM(CASE WHEN l.status='lead'       THEN 1 ELSE 0 END) as em_lead,
       SUM(CASE WHEN l.status='cotacao'    THEN 1 ELSE 0 END) as cotacao,
+      SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
+      SUM(CASE WHEN l.status='fechado'    THEN 1 ELSE 0 END) as fechados,
       SUM(CASE WHEN l.status='perdido'    THEN 1 ELSE 0 END) as perdidos
     FROM consultants c LEFT JOIN leads l ON c.id=l.consultant_id${dj}
     WHERE c.active=1 GROUP BY c.id ORDER BY fechados DESC, total DESC
@@ -557,9 +562,9 @@ app.post('/api/analytics/whatsapp', auth, async (req, res) => {
   const s = Object.fromEntries(byStatus.map(x => [x.status, x.count]));
   const medals = ['🥇','🥈','🥉'];
   const periodo = from && to ? `${from} até ${to}` : from ? `a partir de ${from}` : to ? `até ${to}` : 'todo o período';
-  const rankLines = ranking.map((c,i) => `${medals[i]||`${i+1}º`} *${c.name}* — ${c.fechados||0} fechados | ${c.negociacao||0} negoc. | ${c.cotacao||0} cotação | ${c.perdidos||0} perdidos`).join('\n');
+  const rankLines = ranking.map((c,i) => `${medals[i]||`${i+1}º`} *${c.name}* — ${c.fechados||0} fechados | ${c.negociacao||0} negoc. | ${c.cotacao||0} cotação | ${c.em_lead||0} lead | ${c.perdidos||0} perdidos`).join('\n');
 
-  const text = `📊 *Relatório de Performance — APVS Central Minas*\n📅 Período: ${periodo}\n🗓 Gerado em: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}\n\n━━━━━━━━━━━━━━━\n📥 *Total de leads:* ${total}\n🔵 Em Cotação: ${s.cotacao||0}\n🟡 Em Negociação: ${s.negociacao||0}\n🟢 Fechados: ${s.fechado||0}\n🔴 Perdidos: ${s.perdido||0}\n━━━━━━━━━━━━━━━\n\n🏆 *Ranking de Fechamentos*\n${rankLines}`;
+  const text = `📊 *Relatório de Performance — APVS Central Minas*\n📅 Período: ${periodo}\n🗓 Gerado em: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}\n\n━━━━━━━━━━━━━━━\n📥 *Total de leads:* ${total}\n⚪ Em Lead: ${s.lead||0}\n🔵 Em Cotação: ${s.cotacao||0}\n🟡 Em Negociação: ${s.negociacao||0}\n🟢 Fechados: ${s.fechado||0}\n🔴 Perdidos: ${s.perdido||0}\n━━━━━━━━━━━━━━━\n\n🏆 *Ranking de Fechamentos*\n${rankLines}`;
 
   const evo = db.prepare("SELECT evo_instance, evo_key FROM users WHERE evo_instance IS NOT NULL AND evo_instance!='' AND evo_key IS NOT NULL AND evo_key!='' LIMIT 1").get();
   if (!evo) return res.status(503).json({ error: 'Nenhuma instância Evolution API configurada' });

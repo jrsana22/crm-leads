@@ -21,6 +21,7 @@
     /* Light theme overrides */
     [data-theme="light"] td{border-bottom-color:rgba(0,0,0,0.05)}
     [data-theme="light"] tr:hover td{background:rgba(0,0,0,0.02)}
+    [data-theme="light"] .badge.lead{background:rgba(75,85,99,.1);color:#374151}
     [data-theme="light"] .badge.cotacao{background:rgba(29,78,216,.1);color:#1d4ed8}
     [data-theme="light"] .badge.negociacao{background:rgba(180,83,9,.1);color:#b45309}
     [data-theme="light"] .badge.fechado{background:rgba(22,163,74,.1);color:#16a34a}
@@ -41,6 +42,7 @@
     [data-theme="light"] .col-dot.negociacao{background:#b45309}
     [data-theme="light"] .col-dot.fechado{background:#16a34a}
     [data-theme="light"] .col-dot.perdido{background:#b91c1c}
+    [data-theme="light"] .cs.lead{background:rgba(75,85,99,.1);color:#374151}
     [data-theme="light"] .cs.cotacao{background:rgba(29,78,216,.1);color:#1d4ed8}
     [data-theme="light"] .cs.negociacao{background:rgba(180,83,9,.1);color:#b45309}
     [data-theme="light"] .cs.fechado{background:rgba(22,163,74,.1);color:#16a34a}
@@ -94,6 +96,7 @@
     .stat-card.orange::before{background:linear-gradient(90deg,#f97316,#fb923c)}
     .stat-card.green::before{background:linear-gradient(90deg,#22c55e,#4ade80)}
     .stat-card.red::before{background:linear-gradient(90deg,#ef4444,#f87171)}
+    .stat-card.gray::before{background:linear-gradient(90deg,#6b7280,#9ca3af)}
     .stat-label{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
     .stat-value{font-size:36px;font-weight:700;line-height:1;margin-bottom:6px}
     .stat-sub{font-size:12px;color:var(--muted)}
@@ -109,17 +112,18 @@
     .cs.cotacao{background:rgba(59,130,246,.12);color:#60a5fa}
     .cs.negociacao{background:rgba(245,158,11,.12);color:#fbbf24}
     .cs.fechado{background:rgba(34,197,94,.12);color:#4ade80}
+    .cs.lead{background:rgba(107,114,128,.12);color:#9ca3af}
     .cs.perdido{background:rgba(239,68,68,.12);color:#f87171}
 
     /* Kanban */
     .kanban-filters{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
     .chip{padding:6px 14px;border-radius:20px;font-size:13px;cursor:pointer;border:1px solid var(--border);color:var(--muted);background:var(--surface);transition:all .15s}
     .chip:hover,.chip.active{background:var(--primary);color:#fff;border-color:var(--primary)}
-    .kanban-board{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:start}
+    .kanban-board{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;align-items:start}
     .kcol{background:var(--surface);border-radius:16px;overflow:hidden}
     .kcol-head{padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
     .col-dot{width:8px;height:8px;border-radius:50%}
-    .col-dot.cotacao{background:var(--blue)}.col-dot.negociacao{background:var(--yellow)}.col-dot.fechado{background:var(--green)}.col-dot.perdido{background:var(--red)}
+    .col-dot.lead{background:#6b7280}.col-dot.cotacao{background:var(--blue)}.col-dot.negociacao{background:var(--yellow)}.col-dot.fechado{background:var(--green)}.col-dot.perdido{background:var(--red)}
     .kcol-head h3{font-size:14px;font-weight:600;flex:1}
     .col-cnt{background:var(--surface2);color:var(--muted);font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px}
     .kcards{padding:12px;padding-bottom:80px;display:flex;flex-direction:column;gap:10px;min-height:120px;transition:background .15s,outline .15s}
@@ -156,6 +160,7 @@
 
     /* Badges */
     .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500}
+    .badge.lead{background:rgba(107,114,128,.15);color:#9ca3af}
     .badge.cotacao{background:rgba(59,130,246,.15);color:#60a5fa}
     .badge.negociacao{background:rgba(245,158,11,.15);color:#fbbf24}
     .badge.fechado{background:rgba(34,197,94,.15);color:#4ade80}
@@ -304,7 +309,7 @@
 <div class="mo" id="moEdit">
   <div class="md" style="max-width:420px">
     <div class="md-head"><h3>Editar Lead</h3><button class="md-close" onclick="closeMo('moEdit')">✕</button></div>
-    <div class="fg"><label class="fl">Status</label><select class="fi" id="eStatus" onchange="togglePerdaGroup()"><option value="cotacao">Em Cotação</option><option value="negociacao">Em Negociação</option><option value="fechado">Fechado</option><option value="perdido">Perdido</option></select></div>
+    <div class="fg"><label class="fl">Status</label><select class="fi" id="eStatus" onchange="togglePerdaGroup()"><option value="lead">Lead</option><option value="cotacao">Em Cotação</option><option value="negociacao">Em Negociação</option><option value="fechado">Fechado</option><option value="perdido">Perdido</option></select></div>
     <div class="fg" id="ePerdaGroup" style="display:none"><label class="fl">Motivo da perda</label><select class="fi" id="ePerdaMotivo"><option value="">Selecione…</option><option value="preco">Preço</option><option value="nao_atendeu">Não atendeu</option><option value="concorrente">Comprou com concorrente</option><option value="desistiu">Desistiu</option><option value="outro">Outro</option></select></div>
     <div class="fg" id="eConsultantGroup"><label class="fl">Consultor(a)</label><select class="fi" id="eConsultant"></select></div>
     <div class="fg"><label class="fl">Observações</label><textarea class="fi" id="eNotes" placeholder="Observações…"></textarea></div>
@@ -422,7 +427,7 @@
 <script>
 // ── Constants ────────────────────────────────────────────────────────────────
 const AV = ['c0','c1','c2','c3','c4'];
-const STATUS_LABEL = { cotacao:'🔵 Cotação', negociacao:'🟡 Negociação', fechado:'🟢 Fechado', perdido:'🔴 Perdido' };
+const STATUS_LABEL = { lead:'⚪ Lead', cotacao:'🔵 Cotação', negociacao:'🟡 Negociação', fechado:'🟢 Fechado', perdido:'🔴 Perdido' };
 let kanbanDateFilter = 'mes';
 const ROLE_LABEL   = { admin:'⚙️ Admin', manager:'👔 Gerente', consultor:'🧑‍💼 Consultor(a)' };
 const ACTION_LABEL = { created:'Lead criado', status_changed:'Status alterado', reassigned:'Reatribuído', duplicate_blocked:'Duplicata bloqueada' };
@@ -628,7 +633,7 @@ async function refreshOverviewStats() {
   const stats = await api('/api/stats');
   if (!stats) return;
   const s = Object.fromEntries((stats.byStatus||[]).map(x=>[x.status,x.count]));
-  const map = { 'ov-total': stats.total, 'ov-cotacao': s.cotacao||0, 'ov-negociacao': s.negociacao||0, 'ov-fechado': s.fechado||0, 'ov-perdido': s.perdido||0 };
+  const map = { 'ov-total': stats.total, 'ov-lead': s.lead||0, 'ov-cotacao': s.cotacao||0, 'ov-negociacao': s.negociacao||0, 'ov-fechado': s.fechado||0, 'ov-perdido': s.perdido||0 };
   Object.entries(map).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.textContent = val; });
   // atualiza lista recente sem piscar
   const recentEl = document.getElementById('recentList');
@@ -647,6 +652,7 @@ async function renderOverview() {
   content.innerHTML = `
     <div class="stats-grid">
       <div class="stat-card blue"><div class="stat-label">Total de Leads</div><div class="stat-value" id="ov-total">${stats.total}</div><div class="stat-sub">Todos os consultores</div></div>
+      <div class="stat-card gray"><div class="stat-label">Lead</div><div class="stat-value" id="ov-lead" style="color:#9ca3af">${s.lead||0}</div><div class="stat-sub">Aguardando contato</div></div>
       <div class="stat-card yellow"><div class="stat-label">Em Cotação</div><div class="stat-value" id="ov-cotacao">${s.cotacao||0}</div><div class="stat-sub">Aguardando proposta</div></div>
       <div class="stat-card orange"><div class="stat-label">Em Negociação</div><div class="stat-value" id="ov-negociacao">${s.negociacao||0}</div><div class="stat-sub">Em andamento</div></div>
       <div class="stat-card green"><div class="stat-label">Fechados</div><div class="stat-value" id="ov-fechado">${s.fechado||0}</div><div class="stat-sub">Concluídos</div></div>
@@ -660,6 +666,7 @@ async function renderOverview() {
           <div><div style="font-weight:600;font-size:15px">${c.name}</div><div style="font-size:12px;color:var(--muted)">${c.total} lead${c.total!==1?'s':''}</div></div>
         </div>
         <div class="cc-stats">
+          <div class="cs lead"><span class="n">${c.em_lead||0}</span>Lead</div>
           <div class="cs cotacao"><span class="n">${c.cotacao||0}</span>Cotação</div>
           <div class="cs negociacao"><span class="n">${c.negociacao||0}</span>Negoc.</div>
           <div class="cs fechado"><span class="n">${c.fechado||0}</span>Fechado</div>
@@ -709,7 +716,7 @@ function renderKanbanView() {
   document.getElementById('content').innerHTML = `
     ${filterHtml}
     <div class="kanban-board">
-      ${['cotacao','negociacao','fechado','perdido'].map(s=>`
+      ${['lead','cotacao','negociacao','fechado','perdido'].map(s=>`
         <div class="kcol">
           <div class="kcol-head"><span class="col-dot ${s}"></span><h3>${STATUS_LABEL[s].replace(/^. /,'')}</h3><span class="col-cnt" id="cnt-${s}">0</span></div>
           <div class="kcards" id="col-${s}" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,'${s}')"></div>
@@ -736,7 +743,7 @@ function setKanbanDate(filter) {
 }
 
 function renderKanban() {
-  const cols = { cotacao:[], negociacao:[], fechado:[], perdido:[] };
+  const cols = { lead:[], cotacao:[], negociacao:[], fechado:[], perdido:[] };
   const now = new Date();
 
   // Compute date boundary from filter
@@ -770,7 +777,7 @@ function renderKanban() {
     if (cols[l.status] !== undefined) cols[l.status].push(l);
   });
 
-  ['cotacao','negociacao','fechado','perdido'].forEach(s => {
+  ['lead','cotacao','negociacao','fechado','perdido'].forEach(s => {
     const cnt = document.getElementById(`cnt-${s}`);
     const col = document.getElementById(`col-${s}`);
     if (!cnt || !col) return;
@@ -799,6 +806,7 @@ function renderLeadsView() {
         <input type="text" class="sinput" id="fSearch" placeholder="🔍  Buscar nome, telefone ou placa…" oninput="applyFilters()">
         <select class="sinput" id="fStatus" onchange="applyFilters()" style="width:160px">
           <option value="">Todos os status</option>
+          <option value="lead">Lead</option>
           <option value="cotacao">Em Cotação</option>
           <option value="negociacao">Em Negociação</option>
           <option value="fechado">Fechado</option>
@@ -972,6 +980,7 @@ async function renderGestaoView() {
         <div class="fg" style="margin:0">
           <label class="fl">Incluir status</label>
           <div style="display:flex;gap:10px;padding:10px 0">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="gReassignLead" checked> Lead</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="gReassignCotacao" checked> Cotação</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="gReassignNegociacao" checked> Negociação</label>
           </div>
@@ -1018,6 +1027,7 @@ async function gestaoReassign() {
   if (!from || !to) return toast('Selecione os consultores', 'error');
   if (from === to)  return toast('Origem e destino não podem ser o mesmo', 'error');
   const statuses = [];
+  if (document.getElementById('gReassignLead')?.checked)       statuses.push('lead');
   if (document.getElementById('gReassignCotacao')?.checked)    statuses.push('cotacao');
   if (document.getElementById('gReassignNegociacao')?.checked) statuses.push('negociacao');
   if (!statuses.length) return toast('Selecione ao menos um status', 'error');
@@ -1060,6 +1070,7 @@ async function renderAdminView() {
         <div class="fg" style="margin:0">
           <label class="fl">Incluir status</label>
           <div style="display:flex;gap:10px;padding:10px 0">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="reassignLead" checked> Lead</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="reassignCotacao" checked> Cotação</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="reassignNegociacao" checked> Negociação</label>
           </div>
@@ -1158,6 +1169,7 @@ async function bulkReassign() {
   if (!from || !to) return toast('Selecione os consultores', 'error');
   if (from === to)  return toast('Origem e destino não podem ser o mesmo', 'error');
   const statuses = [];
+  if (document.getElementById('reassignLead')?.checked)       statuses.push('lead');
   if (document.getElementById('reassignCotacao')?.checked)    statuses.push('cotacao');
   if (document.getElementById('reassignNegociacao')?.checked) statuses.push('negociacao');
   if (!statuses.length) return toast('Selecione ao menos um status', 'error');
@@ -1293,6 +1305,7 @@ async function loadAnalise() {
   document.getElementById('analiseBody').innerHTML = `
     <div class="stats-grid" style="margin-bottom:24px">
       <div class="stat-card blue"><div class="stat-label">Total no Período</div><div class="stat-value">${data.total}</div><div class="stat-sub">Leads recebidos</div></div>
+      <div class="stat-card gray"><div class="stat-label">Lead</div><div class="stat-value" style="color:#9ca3af">${s.lead||0}</div><div class="stat-sub">Aguardando contato</div></div>
       <div class="stat-card yellow"><div class="stat-label">Em Cotação</div><div class="stat-value">${s.cotacao||0}</div><div class="stat-sub">Aguardando proposta</div></div>
       <div class="stat-card orange"><div class="stat-label">Em Negociação</div><div class="stat-value">${s.negociacao||0}</div><div class="stat-sub">Em andamento</div></div>
       <div class="stat-card green"><div class="stat-label">Fechados</div><div class="stat-value">${s.fechado||0}</div><div class="stat-sub">Concluídos</div></div>
@@ -1301,7 +1314,7 @@ async function loadAnalise() {
     <div class="tw" id="analiseRanking">
       <div class="th"><h3>🏆 Ranking de Fechamentos</h3><span style="font-size:12px;color:var(--muted)">Ordenado por leads fechados no período</span></div>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th style="width:50px">#</th><th>Consultor(a)</th><th>🔵 Cotação</th><th>🟡 Negociação</th><th>🟢 Fechados</th><th>🔴 Perdidos</th><th>Total</th></tr></thead>
+        <thead><tr><th style="width:50px">#</th><th>Consultor(a)</th><th>⚪ Lead</th><th>🔵 Cotação</th><th>🟡 Negociação</th><th>🟢 Fechados</th><th>🔴 Perdidos</th><th>Total</th></tr></thead>
         <tbody>${(data.ranking||[]).map((c,i) => `
           <tr style="${i===0?'background:rgba(108,99,255,.05)':''}">
             <td style="font-size:${i<3?'22':'14'}px;text-align:center">${medals[i]||`${i+1}º`}</td>
@@ -1309,6 +1322,7 @@ async function loadAnalise() {
               <div class="av ${AV[i%5]}" style="width:32px;height:32px;font-size:13px;border-radius:10px">${c.name[0]}</div>
               <strong>${esc(c.name)}</strong>
             </div></td>
+            <td><span style="font-weight:600;color:var(--muted)">${c.em_lead||0}</span></td>
             <td><span style="font-weight:600;color:var(--blue)">${c.cotacao||0}</span></td>
             <td><span style="font-weight:600;color:var(--yellow)">${c.negociacao||0}</span></td>
             <td><span style="font-size:${i===0?'24':'18'}px;font-weight:700;color:var(--green)">${c.fechados||0}</span></td>
@@ -1332,14 +1346,15 @@ function exportAnaliseCSV() {
     [],
     ['RESUMO'],
     ['Total de Leads', _analiseData.total],
+    ['Lead',           s.lead       || 0],
     ['Em Cotação',     s.cotacao    || 0],
     ['Em Negociação',  s.negociacao || 0],
     ['Fechados',       s.fechado    || 0],
     ['Perdidos',       s.perdido    || 0],
     [],
     ['RANKING DE FECHAMENTOS'],
-    ['Posição', 'Consultor(a)', 'Em Cotação', 'Em Negociação', 'Fechados', 'Perdidos', 'Total'],
-    ...(_analiseData.ranking||[]).map((c,i) => [`${i+1}º`, c.name, c.cotacao||0, c.negociacao||0, c.fechados||0, c.perdidos||0, c.total||0])
+    ['Posição', 'Consultor(a)', 'Lead', 'Em Cotação', 'Em Negociação', 'Fechados', 'Perdidos', 'Total'],
+    ...(_analiseData.ranking||[]).map((c,i) => [`${i+1}º`, c.name, c.em_lead||0, c.cotacao||0, c.negociacao||0, c.fechados||0, c.perdidos||0, c.total||0])
   ];
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
@@ -1379,6 +1394,7 @@ function exportAnalisePDF() {
     <tr>
       <td style="text-align:center;font-weight:700">${i+1}º</td>
       <td style="font-weight:600">${c.name}</td>
+      <td style="text-align:center;color:#6b7280">${c.em_lead||0}</td>
       <td style="text-align:center;color:#2563eb">${c.cotacao||0}</td>
       <td style="text-align:center;color:#d97706">${c.negociacao||0}</td>
       <td style="text-align:center;color:#16a34a;font-weight:700">${c.fechados||0}</td>
@@ -1391,7 +1407,7 @@ function exportAnalisePDF() {
     <style>
       body{font-family:Arial,sans-serif;padding:32px;color:#111;max-width:900px;margin:0 auto}
       h1{color:#1648cc;margin-bottom:4px;font-size:22px} .sub{color:#666;font-size:13px;margin-bottom:24px}
-      .cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px}
+      .cards{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:28px}
       .card{border:1px solid #e5e7eb;border-radius:10px;padding:14px;text-align:center}
       .card .val{font-size:28px;font-weight:700} .card .lbl{font-size:11px;color:#666;margin-top:2px}
       .blue .val{color:#1648cc} .green .val{color:#16a34a} .yellow .val{color:#d97706} .orange .val{color:#ea580c} .red .val{color:#ef4444}
@@ -1407,13 +1423,14 @@ function exportAnalisePDF() {
     <div class="sub">APVS Central Minas · Período: ${from} até ${to} · Gerado em ${new Date().toLocaleString('pt-BR')}</div>
     <div class="cards">
       <div class="card blue"><div class="val">${_analiseData.total}</div><div class="lbl">Total de Leads</div></div>
+      <div class="card"><div class="val" style="color:#6b7280">${s.lead||0}</div><div class="lbl">Lead</div></div>
       <div class="card yellow"><div class="val">${s.cotacao||0}</div><div class="lbl">Em Cotação</div></div>
       <div class="card orange"><div class="val">${s.negociacao||0}</div><div class="lbl">Em Negociação</div></div>
       <div class="card green"><div class="val">${s.fechado||0}</div><div class="lbl">Fechados</div></div>
       <div class="card red"><div class="val">${s.perdido||0}</div><div class="lbl">Perdidos</div></div>
     </div>
     <h2>🏆 Ranking de Fechamentos</h2>
-    <table><thead><tr><th>#</th><th>Consultor(a)</th><th>Cotação</th><th>Negociação</th><th>Fechados</th><th>Perdidos</th><th>Total</th></tr></thead>
+    <table><thead><tr><th>#</th><th>Consultor(a)</th><th>Lead</th><th>Cotação</th><th>Negociação</th><th>Fechados</th><th>Perdidos</th><th>Total</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <div class="footer">APVS Central Minas · CRM de Leads · apvscentral.solucoesdeia.com</div>
     <script>window.onload=()=>{window.print()}<\/script>
@@ -1489,7 +1506,7 @@ function calcResponseTime(lead) {
   const toDate = s => s ? new Date(String(s).replace(' ','T') + (String(s).includes('Z')||String(s).includes('+') ? '' : 'Z')) : null;
   const created = toDate(lead.created_at);
   if (!created) return '–';
-  const isOpen = lead.status === 'cotacao' || lead.status === 'negociacao';
+  const isOpen = lead.status === 'lead' || lead.status === 'cotacao' || lead.status === 'negociacao';
   const end = toDate(lead.closed_at) || (isOpen ? new Date() : toDate(lead.updated_at));
   const ms = end - created;
   if (ms < 0) return '–';
