@@ -398,6 +398,49 @@ app.get('/api/analytics', auth, (req, res) => {
   res.json({ total, byStatus, ranking });
 });
 
+app.post('/api/analytics/whatsapp', auth, async (req, res) => {
+  const { from, to, phone } = req.body;
+  if (!phone) return res.status(400).json({ error: 'Número obrigatório' });
+
+  const dp = [];
+  let dj = '';
+  if (from) { dj += ' AND l.created_at >= ?'; dp.push(from); }
+  if (to)   { dj += ' AND l.created_at <= ?'; dp.push(to + ' 23:59:59'); }
+  const wh = 'WHERE 1=1' + dj;
+
+  const total    = db.prepare(`SELECT COUNT(*) as c FROM leads l ${wh}`).get(...dp).c;
+  const byStatus = db.prepare(`SELECT status, COUNT(*) as count FROM leads l ${wh} GROUP BY status`).all(...dp);
+  const ranking  = db.prepare(`
+    SELECT c.name,
+      COUNT(l.id) as total,
+      SUM(CASE WHEN l.status='fechado'    THEN 1 ELSE 0 END) as fechados,
+      SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
+      SUM(CASE WHEN l.status='cotacao'    THEN 1 ELSE 0 END) as cotacao
+    FROM consultants c LEFT JOIN leads l ON c.id=l.consultant_id${dj}
+    WHERE c.active=1 GROUP BY c.id ORDER BY fechados DESC, total DESC
+  `).all(...dp);
+
+  const s = Object.fromEntries(byStatus.map(x => [x.status, x.count]));
+  const medals = ['🥇','🥈','🥉'];
+  const periodo = from && to ? `${from} até ${to}` : from ? `a partir de ${from}` : to ? `até ${to}` : 'todo o período';
+  const rankLines = ranking.map((c,i) => `${medals[i]||`${i+1}º`} *${c.name}* — ${c.fechados||0} fechados | ${c.negociacao||0} negoc. | ${c.cotacao||0} cotação`).join('\n');
+
+  const text = `📊 *Relatório de Performance — APVS Central Minas*\n📅 Período: ${periodo}\n🗓 Gerado em: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}\n\n━━━━━━━━━━━━━━━\n📥 *Total de leads:* ${total}\n🔵 Em Cotação: ${s.cotacao||0}\n🟡 Em Negociação: ${s.negociacao||0}\n🟢 Fechados: ${s.fechado||0}\n━━━━━━━━━━━━━━━\n\n🏆 *Ranking de Fechamentos*\n${rankLines}`;
+
+  const evo = db.prepare("SELECT evo_instance, evo_key FROM users WHERE evo_instance IS NOT NULL AND evo_instance!='' AND evo_key IS NOT NULL AND evo_key!='' LIMIT 1").get();
+  if (!evo) return res.status(503).json({ error: 'Nenhuma instância Evolution API configurada' });
+
+  try {
+    await axios.post(`${EVO_BASE}/message/sendText/${evo.evo_instance}`,
+      { number: phone.replace(/\D/g,''), text },
+      { headers: { apikey: evo.evo_key }, timeout: 10000 }
+    );
+    res.json({ success: true });
+  } catch(e) {
+    res.status(502).json({ error: 'Falha ao enviar via WhatsApp: ' + (e.response?.data?.message || e.message) });
+  }
+});
+
 // ── Activity ───────────────────────────────────────────────────────────────────
 app.get('/api/activity', auth, (req, res) => {
   if (req.user.role === 'consultor') {
