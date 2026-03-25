@@ -341,9 +341,10 @@ app.post('/api/users', auth, adminOnly, (req, res) => {
 });
 
 app.put('/api/users/:id', auth, adminOnly, (req, res) => {
-  const { name, password, role, consultant_id, evo_instance, evo_key, evo_phone } = req.body;
+  const { name, username, password, role, consultant_id, evo_instance, evo_key, evo_phone } = req.body;
   const updates = []; const p = [];
   if (name)                          { updates.push('name=?');          p.push(name); }
+  if (username)                      { updates.push('username=?');      p.push(username); }
   if (role)                          { updates.push('role=?');          p.push(role); }
   if (consultant_id !== undefined)   { updates.push('consultant_id=?'); p.push(consultant_id||null); }
   if (evo_instance !== undefined)    { updates.push('evo_instance=?');  p.push(evo_instance||null); }
