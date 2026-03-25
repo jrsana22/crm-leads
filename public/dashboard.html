@@ -294,9 +294,10 @@
       <div class="sec-title">🔔 Notificações WhatsApp (Evolution API)</div>
       <div class="grid2">
         <div class="fg"><label class="fl">Instância</label><input class="fi" type="text" id="uEvoInst" placeholder="nome-instancia" autocomplete="off"></div>
-        <div class="fg"><label class="fl">WhatsApp</label><input class="fi" type="text" id="uEvoPhone" placeholder="5531999999999" autocomplete="off"></div>
+        <div class="fg"><label class="fl">WhatsApp</label><input class="fi" type="tel" id="uEvoPhone" placeholder="5531999999999" autocomplete="off" inputmode="numeric"></div>
       </div>
       <div class="fg"><label class="fl">API Key</label><input class="fi" type="password" id="uEvoKey" placeholder="Chave API" autocomplete="new-password"><span id="uEvoKeyHint" style="font-size:11px;color:var(--muted);margin-top:4px;display:none">Chave já cadastrada. Deixe em branco para manter.</span></div>
+      <div class="fg"><label class="fl">Número para enviar relatório de performance</label><input class="fi" type="tel" id="uReportPhone" placeholder="5531999999999" autocomplete="off" inputmode="numeric"><span style="font-size:11px;color:var(--muted);margin-top:4px;display:block">Receberá o relatório diário automaticamente seg–sex às 19h</span></div>
     </div>
     <div class="md-foot">
       <button class="btn btn-ghost" onclick="closeMo('moUser')">Cancelar</button>
@@ -826,7 +827,7 @@ function toggleURole() {
 function openUserModal(id = null) {
   editingUserId = id;
   document.getElementById('userTitle').textContent = id ? 'Editar Usuário' : 'Novo Usuário';
-  ['uName','uUser','uPass','uEvoInst','uEvoPhone','uEvoKey'].forEach(x => document.getElementById(x).value = '');
+  ['uName','uUser','uPass','uEvoInst','uEvoPhone','uEvoKey','uReportPhone'].forEach(x => document.getElementById(x).value = '');
   document.getElementById('uEvoKeyHint').style.display = 'none';
   if (!id) {
     document.getElementById('uRole').value = 'consultor';
@@ -840,6 +841,7 @@ function openUserModal(id = null) {
       document.getElementById('uConsultantId').value = u.consultant_id || '';
       document.getElementById('uEvoInst').value = u.evo_instance || '';
       document.getElementById('uEvoPhone').value = u.evo_phone || '';
+      document.getElementById('uReportPhone').value = u.report_phone || '';
       if (u.has_evo_key) document.getElementById('uEvoKeyHint').style.display = 'block';
     }
   }
@@ -858,6 +860,7 @@ async function saveUser() {
     role, consultant_id: cid,
     evo_instance: document.getElementById('uEvoInst').value,
     evo_phone: document.getElementById('uEvoPhone').value,
+    report_phone: document.getElementById('uReportPhone').value,
     ...(evoKeyVal ? { evo_key: evoKeyVal } : {}),
   };
   if (!editingUserId && (!body.username || !body.password)) return toast('Usuário e senha obrigatórios','error');

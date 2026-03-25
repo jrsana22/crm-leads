@@ -15,6 +15,8 @@ const EVO_BASE = 'https://painelsana-evolution-api.mofsig.easypanel.host';
 const { mkdirSync } = require('fs');
 mkdirSync('./data', { recursive: true });
 const db = new DatabaseSync(process.env.DB_PATH || './data/crm.db');
+// Migration: add report_phone if not exists
+try { db.exec("ALTER TABLE users ADD COLUMN report_phone TEXT"); } catch(_) {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -27,6 +29,7 @@ db.exec(`
     evo_instance TEXT,
     evo_key TEXT,
     evo_phone TEXT,
+    report_phone TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
   CREATE TABLE IF NOT EXISTS consultants (
@@ -107,6 +110,55 @@ function rateLimit(max, windowMs) {
 }
 // Clean rate store every 10 minutes
 setInterval(() => { const now = Date.now(); _rl.forEach((v,k) => { if (!v.some(t => now-t < 600000)) _rl.delete(k); }); }, 600000);
+
+// ── Relatório diário seg-sex 19h (BRT = UTC-3) ────────────────────────────────
+let _lastReportDate = '';
+setInterval(async () => {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const dow  = now.getDay();   // 0=dom, 6=sab
+  const hour = now.getHours();
+  const min  = now.getMinutes();
+  const dateKey = now.toISOString().split('T')[0];
+  if (dow === 0 || dow === 6) return;          // fds
+  if (hour !== 19 || min !== 0) return;        // só às 19:00
+  if (_lastReportDate === dateKey) return;     // já enviou hoje
+  _lastReportDate = dateKey;
+
+  const recipients = db.prepare("SELECT report_phone FROM users WHERE report_phone IS NOT NULL AND report_phone != ''").all();
+  if (!recipients.length) return;
+  const evo = db.prepare("SELECT evo_instance, evo_key FROM users WHERE evo_instance IS NOT NULL AND evo_instance!='' AND evo_key IS NOT NULL AND evo_key!='' LIMIT 1").get();
+  if (!evo) return;
+
+  const today = dateKey;
+  const total    = db.prepare("SELECT COUNT(*) as c FROM leads WHERE created_at >= ?").get(today + ' 00:00:00').c;
+  const byStatus = db.prepare("SELECT status, COUNT(*) as count FROM leads WHERE created_at >= ? GROUP BY status").all(today + ' 00:00:00');
+  const ranking  = db.prepare(`
+    SELECT c.name,
+      COUNT(l.id) as total,
+      SUM(CASE WHEN l.status='fechado'    THEN 1 ELSE 0 END) as fechados,
+      SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
+      SUM(CASE WHEN l.status='cotacao'    THEN 1 ELSE 0 END) as cotacao
+    FROM consultants c LEFT JOIN leads l ON c.id=l.consultant_id AND l.created_at >= ?
+    WHERE c.active=1 GROUP BY c.id ORDER BY fechados DESC, total DESC
+  `).all(today + ' 00:00:00');
+
+  const s = Object.fromEntries(byStatus.map(x => [x.status, x.count]));
+  const medals = ['🥇','🥈','🥉'];
+  const rankLines = ranking.map((c,i) => `${medals[i]||`${i+1}º`} *${c.name}* — ${c.fechados||0} fechados | ${c.negociacao||0} negoc. | ${c.cotacao||0} cotação`).join('\n');
+  const text = `📊 *Relatório Diário — APVS Central Minas*\n📅 ${now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} · Gerado às 19h\n\n━━━━━━━━━━━━━━━\n📥 *Leads hoje:* ${total}\n🔵 Em Cotação: ${s.cotacao||0}\n🟡 Em Negociação: ${s.negociacao||0}\n🟢 Fechados: ${s.fechado||0}\n━━━━━━━━━━━━━━━\n\n🏆 *Ranking do Dia*\n${rankLines}`;
+
+  for (const r of recipients) {
+    try {
+      await axios.post(`${EVO_BASE}/message/sendText/${evo.evo_instance}`,
+        { number: r.report_phone, text },
+        { headers: { apikey: evo.evo_key }, timeout: 10000 }
+      );
+      console.log(`✅ Relatório diário enviado para ${r.report_phone}`);
+    } catch(e) {
+      console.error(`❌ Falha ao enviar relatório para ${r.report_phone}:`, e.message);
+    }
+  }
+}, 60000); // verifica a cada 1 minuto
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
@@ -333,7 +385,7 @@ app.put('/api/consultants/:id', auth, adminOnly, (req, res) => {
 app.get('/api/users', auth, adminOnly, (req, res) => {
   res.json(db.prepare(`
     SELECT u.id, u.username, u.role, u.name, u.consultant_id, c.name as consultant_name,
-           u.evo_instance, u.evo_phone, u.created_at,
+           u.evo_instance, u.evo_phone, u.report_phone, u.created_at,
            CASE WHEN u.evo_key IS NOT NULL AND u.evo_key != '' THEN 1 ELSE 0 END as has_evo_key
     FROM users u LEFT JOIN consultants c ON u.consultant_id=c.id
     WHERE u.role != 'admin'
@@ -341,18 +393,18 @@ app.get('/api/users', auth, adminOnly, (req, res) => {
 });
 
 app.post('/api/users', auth, adminOnly, (req, res) => {
-  const { username, password, role, name, consultant_id, evo_instance, evo_key, evo_phone } = req.body;
+  const { username, password, role, name, consultant_id, evo_instance, evo_key, evo_phone, report_phone } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
   if (role === 'consultor' && !consultant_id) return res.status(400).json({ error: 'Selecione o consultor vinculado' });
   try {
-    const r = db.prepare('INSERT INTO users (username,password_hash,role,name,consultant_id,evo_instance,evo_key,evo_phone) VALUES (?,?,?,?,?,?,?,?)')
-      .run(username, bcrypt.hashSync(password,10), role||'manager', name||username, consultant_id||null, evo_instance||null, evo_key||null, evo_phone||null);
+    const r = db.prepare('INSERT INTO users (username,password_hash,role,name,consultant_id,evo_instance,evo_key,evo_phone,report_phone) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(username, bcrypt.hashSync(password,10), role||'manager', name||username, consultant_id||null, evo_instance||null, evo_key||null, evo_phone||null, report_phone||null);
     res.status(201).json({ id: r.lastInsertRowid, username, role: role||'manager', name });
   } catch { res.status(400).json({ error: 'Usuário já existe' }); }
 });
 
 app.put('/api/users/:id', auth, adminOnly, (req, res) => {
-  const { name, username, password, role, consultant_id, evo_instance, evo_key, evo_phone } = req.body;
+  const { name, username, password, role, consultant_id, evo_instance, evo_key, evo_phone, report_phone } = req.body;
   const updates = []; const p = [];
   if (name)                          { updates.push('name=?');          p.push(name); }
   if (username)                      { updates.push('username=?');      p.push(username); }
@@ -361,6 +413,7 @@ app.put('/api/users/:id', auth, adminOnly, (req, res) => {
   if (evo_instance !== undefined)    { updates.push('evo_instance=?');  p.push(evo_instance||null); }
   if (evo_key)                       { updates.push('evo_key=?');       p.push(evo_key); }
   if (evo_phone !== undefined)       { updates.push('evo_phone=?');     p.push(evo_phone||null); }
+  if (report_phone !== undefined)    { updates.push('report_phone=?');  p.push(report_phone||null); }
   if (password)                      { updates.push('password_hash=?'); p.push(bcrypt.hashSync(password,10)); }
   if (!updates.length) return res.status(400).json({ error: 'Nada para atualizar' });
   p.push(req.params.id);
