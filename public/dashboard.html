@@ -345,8 +345,10 @@ let token, user, consultants = [], allLeads = [], currentView = '', editingLeadI
     buildNav();
     await loadConsultants();
     await refresh();
-    setInterval(refresh, 60000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+    setInterval(refresh, 90000);
+    if (window.innerWidth > 768) {
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+    }
   } catch(err) {
     document.getElementById('content').innerHTML =
       `<div style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);border-radius:14px;padding:24px;margin:20px">
@@ -460,7 +462,8 @@ async function refresh() {
   try {
     const newLeads = await api('/api/leads');
     if (!newLeads) return;
-    const changed = JSON.stringify(newLeads) !== JSON.stringify(allLeads);
+    const sig = ls => ls.map(l => `${l.id}:${l.status}:${l.updated_at}`).join('|');
+    const changed = newLeads.length !== allLeads.length || sig(newLeads) !== sig(allLeads);
     allLeads = newLeads;
     const badge = document.getElementById('totalBadge');
     if (badge) badge.textContent = allLeads.length;
