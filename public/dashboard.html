@@ -860,12 +860,16 @@ function renderAnaliseView() {
           </div>
           <button class="btn btn-primary btn-sm" onclick="loadAnalise()">Filtrar</button>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('aFrom').value='';document.getElementById('aTo').value='';loadAnalise()">Limpar</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportAnaliseCSV()" id="btnExportCSV" style="display:none">⬇ CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportAnalisePDF()" id="btnExportPDF" style="display:none">🖨 PDF</button>
         </div>
       </div>
     </div>
     <div id="analiseBody"></div>`;
   loadAnalise();
 }
+
+let _analiseData = null;
 
 async function loadAnalise() {
   const from = document.getElementById('aFrom')?.value || '';
@@ -877,6 +881,9 @@ async function loadAnalise() {
   if (p.length) url += '?' + p.join('&');
   const data = await api(url);
   if (!data) return;
+  _analiseData = { ...data, from, to };
+  document.getElementById('btnExportCSV').style.display = '';
+  document.getElementById('btnExportPDF').style.display = '';
   const s = Object.fromEntries((data.byStatus||[]).map(x => [x.status, x.count]));
   const medals = ['🥇','🥈','🥉'];
   document.getElementById('analiseBody').innerHTML = `
@@ -886,7 +893,7 @@ async function loadAnalise() {
       <div class="stat-card orange"><div class="stat-label">Em Negociação</div><div class="stat-value">${s.negociacao||0}</div><div class="stat-sub">Em andamento</div></div>
       <div class="stat-card green"><div class="stat-label">Fechados</div><div class="stat-value">${s.fechado||0}</div><div class="stat-sub">Concluídos</div></div>
     </div>
-    <div class="tw">
+    <div class="tw" id="analiseRanking">
       <div class="th"><h3>🏆 Ranking de Fechamentos</h3><span style="font-size:12px;color:var(--muted)">Ordenado por leads fechados no período</span></div>
       <div style="overflow-x:auto"><table>
         <thead><tr><th style="width:50px">#</th><th>Consultor(a)</th><th>🟢 Fechados</th><th>🟡 Negociação</th><th>🔵 Cotação</th><th>Total</th></tr></thead>
@@ -905,6 +912,83 @@ async function loadAnalise() {
         </tbody>
       </table></div>
     </div>`;
+}
+
+function exportAnaliseCSV() {
+  if (!_analiseData) return;
+  const from = _analiseData.from || 'início';
+  const to   = _analiseData.to   || 'hoje';
+  const s    = Object.fromEntries((_analiseData.byStatus||[]).map(x => [x.status, x.count]));
+  const rows = [
+    ['Relatório de Performance — APVS Central Minas'],
+    [`Período: ${from} até ${to}`],
+    [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
+    [],
+    ['RESUMO'],
+    ['Total de Leads', _analiseData.total],
+    ['Em Cotação',     s.cotacao    || 0],
+    ['Em Negociação',  s.negociacao || 0],
+    ['Fechados',       s.fechado    || 0],
+    [],
+    ['RANKING DE FECHAMENTOS'],
+    ['Posição', 'Consultor(a)', 'Fechados', 'Em Negociação', 'Em Cotação', 'Total'],
+    ...(_analiseData.ranking||[]).map((c,i) => [`${i+1}º`, c.name, c.fechados||0, c.negociacao||0, c.cotacao||0, c.total||0])
+  ];
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `apvs-performance-${from}-${to}.csv`;
+  a.click();
+}
+
+function exportAnalisePDF() {
+  if (!_analiseData) return;
+  const from = _analiseData.from || 'início';
+  const to   = _analiseData.to   || 'hoje';
+  const s    = Object.fromEntries((_analiseData.byStatus||[]).map(x => [x.status, x.count]));
+  const rows = (_analiseData.ranking||[]).map((c,i) => `
+    <tr>
+      <td style="text-align:center;font-weight:700">${i+1}º</td>
+      <td style="font-weight:600">${c.name}</td>
+      <td style="text-align:center;color:#16a34a;font-weight:700">${c.fechados||0}</td>
+      <td style="text-align:center;color:#d97706">${c.negociacao||0}</td>
+      <td style="text-align:center;color:#2563eb">${c.cotacao||0}</td>
+      <td style="text-align:center;font-weight:600">${c.total||0}</td>
+    </tr>`).join('');
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Performance APVS ${from} - ${to}</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:32px;color:#111;max-width:800px;margin:0 auto}
+      h1{color:#1648cc;margin-bottom:4px;font-size:22px} .sub{color:#666;font-size:13px;margin-bottom:24px}
+      .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+      .card{border:1px solid #e5e7eb;border-radius:10px;padding:14px;text-align:center}
+      .card .val{font-size:28px;font-weight:700} .card .lbl{font-size:11px;color:#666;margin-top:2px}
+      .blue .val{color:#1648cc} .green .val{color:#16a34a} .yellow .val{color:#d97706} .orange .val{color:#ea580c}
+      table{width:100%;border-collapse:collapse;font-size:14px}
+      th{background:#1648cc;color:#fff;padding:10px 12px;text-align:left}
+      td{padding:9px 12px;border-bottom:1px solid #e5e7eb}
+      tr:nth-child(even)td{background:#f9fafb}
+      h2{font-size:16px;margin:0 0 12px}
+      .footer{margin-top:32px;font-size:11px;color:#999;text-align:center}
+      @media print{body{padding:16px}}
+    </style></head><body>
+    <h1>📊 Relatório de Performance</h1>
+    <div class="sub">APVS Central Minas · Período: ${from} até ${to} · Gerado em ${new Date().toLocaleString('pt-BR')}</div>
+    <div class="cards">
+      <div class="card blue"><div class="val">${_analiseData.total}</div><div class="lbl">Total de Leads</div></div>
+      <div class="card yellow"><div class="val">${s.cotacao||0}</div><div class="lbl">Em Cotação</div></div>
+      <div class="card orange"><div class="val">${s.negociacao||0}</div><div class="lbl">Em Negociação</div></div>
+      <div class="card green"><div class="val">${s.fechado||0}</div><div class="lbl">Fechados</div></div>
+    </div>
+    <h2>🏆 Ranking de Fechamentos</h2>
+    <table><thead><tr><th>#</th><th>Consultor(a)</th><th>Fechados</th><th>Negociação</th><th>Cotação</th><th>Total</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="footer">APVS Central Minas · CRM de Leads · apvscentral.solucoesdeia.com</div>
+    <script>window.onload=()=>{window.print()}<\/script>
+    </body></html>`);
+  win.document.close();
 }
 
 // ── Drag & Drop ──────────────────────────────────────────────────────────────
