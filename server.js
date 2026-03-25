@@ -111,17 +111,53 @@ function rateLimit(max, windowMs) {
 // Clean rate store every 10 minutes
 setInterval(() => { const now = Date.now(); _rl.forEach((v,k) => { if (!v.some(t => now-t < 600000)) _rl.delete(k); }); }, 600000);
 
-// ── Relatório diário seg-sex 19h (BRT = UTC-3) ────────────────────────────────
+// ── Relatórios automáticos às 19h BRT ─────────────────────────────────────────
 let _lastReportDate = '';
+
+function buildReportText(titulo, periodo, dateFrom, dateTo, now) {
+  const from = dateFrom + ' 00:00:00';
+  const to   = dateTo   + ' 23:59:59';
+  const total    = db.prepare("SELECT COUNT(*) as c FROM leads WHERE created_at BETWEEN ? AND ?").get(from, to).c;
+  const byStatus = db.prepare("SELECT status, COUNT(*) as count FROM leads WHERE created_at BETWEEN ? AND ? GROUP BY status").all(from, to);
+  const ranking  = db.prepare(`
+    SELECT c.name,
+      COUNT(l.id) as total,
+      SUM(CASE WHEN l.status='fechado'    THEN 1 ELSE 0 END) as fechados,
+      SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
+      SUM(CASE WHEN l.status='cotacao'    THEN 1 ELSE 0 END) as cotacao
+    FROM consultants c LEFT JOIN leads l ON c.id=l.consultant_id AND l.created_at BETWEEN ? AND ?
+    WHERE c.active=1 GROUP BY c.id ORDER BY fechados DESC, total DESC
+  `).all(from, to);
+  const s = Object.fromEntries(byStatus.map(x => [x.status, x.count]));
+  const medals = ['🥇','🥈','🥉'];
+  const rankLines = ranking.map((c,i) => `${medals[i]||`${i+1}º`} *${c.name}* — ${c.fechados||0} fechados | ${c.negociacao||0} negoc. | ${c.cotacao||0} cotação`).join('\n');
+  return `${titulo}\n📅 ${periodo} · Gerado às 19h\n\n━━━━━━━━━━━━━━━\n📥 *Total de leads:* ${total}\n🔵 Em Cotação: ${s.cotacao||0}\n🟡 Em Negociação: ${s.negociacao||0}\n🟢 Fechados: ${s.fechado||0}\n━━━━━━━━━━━━━━━\n\n🏆 *Ranking${rankLines ? '\n'+rankLines : ': sem dados'}`;
+}
+
+async function sendReports(messages, evo, recipients) {
+  for (const text of messages) {
+    for (const r of recipients) {
+      try {
+        await axios.post(`${EVO_BASE}/message/sendText/${evo.evo_instance}`,
+          { number: r.report_phone, text },
+          { headers: { apikey: evo.evo_key }, timeout: 10000 }
+        );
+      } catch(e) { console.error(`❌ Relatório p/ ${r.report_phone}:`, e.message); }
+    }
+    if (messages.length > 1) await new Promise(r => setTimeout(r, 3000)); // pausa entre mensagens
+  }
+}
+
 setInterval(async () => {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-  const dow  = now.getDay();   // 0=dom, 6=sab
-  const hour = now.getHours();
-  const min  = now.getMinutes();
+  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const dow     = now.getDay();   // 0=dom,1=seg...5=sex,6=sab
+  const hour    = now.getHours();
+  const min     = now.getMinutes();
   const dateKey = now.toISOString().split('T')[0];
-  if (dow === 0 || dow === 6) return;          // fds
-  if (hour !== 19 || min !== 0) return;        // só às 19:00
-  if (_lastReportDate === dateKey) return;     // já enviou hoje
+
+  if (dow === 0 || dow === 6)    return; // fim de semana
+  if (hour !== 19 || min !== 0)  return; // só às 19:00
+  if (_lastReportDate === dateKey) return; // já rodou hoje
   _lastReportDate = dateKey;
 
   const recipients = db.prepare("SELECT report_phone FROM users WHERE report_phone IS NOT NULL AND report_phone != ''").all();
@@ -129,36 +165,36 @@ setInterval(async () => {
   const evo = db.prepare("SELECT evo_instance, evo_key FROM users WHERE evo_instance IS NOT NULL AND evo_instance!='' AND evo_key IS NOT NULL AND evo_key!='' LIMIT 1").get();
   if (!evo) return;
 
-  const today = dateKey;
-  const total    = db.prepare("SELECT COUNT(*) as c FROM leads WHERE created_at >= ?").get(today + ' 00:00:00').c;
-  const byStatus = db.prepare("SELECT status, COUNT(*) as count FROM leads WHERE created_at >= ? GROUP BY status").all(today + ' 00:00:00');
-  const ranking  = db.prepare(`
-    SELECT c.name,
-      COUNT(l.id) as total,
-      SUM(CASE WHEN l.status='fechado'    THEN 1 ELSE 0 END) as fechados,
-      SUM(CASE WHEN l.status='negociacao' THEN 1 ELSE 0 END) as negociacao,
-      SUM(CASE WHEN l.status='cotacao'    THEN 1 ELSE 0 END) as cotacao
-    FROM consultants c LEFT JOIN leads l ON c.id=l.consultant_id AND l.created_at >= ?
-    WHERE c.active=1 GROUP BY c.id ORDER BY fechados DESC, total DESC
-  `).all(today + ' 00:00:00');
+  const today    = dateKey;
+  const ptDate   = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const messages = [];
 
-  const s = Object.fromEntries(byStatus.map(x => [x.status, x.count]));
-  const medals = ['🥇','🥈','🥉'];
-  const rankLines = ranking.map((c,i) => `${medals[i]||`${i+1}º`} *${c.name}* — ${c.fechados||0} fechados | ${c.negociacao||0} negoc. | ${c.cotacao||0} cotação`).join('\n');
-  const text = `📊 *Relatório Diário — APVS Central Minas*\n📅 ${now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} · Gerado às 19h\n\n━━━━━━━━━━━━━━━\n📥 *Leads hoje:* ${total}\n🔵 Em Cotação: ${s.cotacao||0}\n🟡 Em Negociação: ${s.negociacao||0}\n🟢 Fechados: ${s.fechado||0}\n━━━━━━━━━━━━━━━\n\n🏆 *Ranking do Dia*\n${rankLines}`;
-
-  for (const r of recipients) {
-    try {
-      await axios.post(`${EVO_BASE}/message/sendText/${evo.evo_instance}`,
-        { number: r.report_phone, text },
-        { headers: { apikey: evo.evo_key }, timeout: 10000 }
-      );
-      console.log(`✅ Relatório diário enviado para ${r.report_phone}`);
-    } catch(e) {
-      console.error(`❌ Falha ao enviar relatório para ${r.report_phone}:`, e.message);
-    }
+  // ── Diário (seg a qui) ou Semanal (sex) ──
+  if (dow >= 1 && dow <= 4) {
+    // Segunda a quinta: relatório do dia
+    messages.push(buildReportText('📊 *Relatório Diário — APVS Central Minas*', ptDate, today, today, now));
+    console.log(`✅ Relatório DIÁRIO ${ptDate}`);
+  } else if (dow === 5) {
+    // Sexta: relatório da semana (seg a sex)
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - 4);
+    const weekFrom = monday.toISOString().split('T')[0];
+    const weekLabel = `${monday.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} a ${ptDate}`;
+    messages.push(buildReportText('📊 *Relatório Semanal — APVS Central Minas*', weekLabel, weekFrom, today, now));
+    console.log(`✅ Relatório SEMANAL ${weekLabel}`);
   }
-}, 60000); // verifica a cada 1 minuto
+
+  // ── Mensal: último dia do mês ──
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  if (now.getDate() === lastDayOfMonth) {
+    const monthFrom = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+    const monthName = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+    messages.push(buildReportText('📊 *Relatório Mensal — APVS Central Minas*', monthName, monthFrom, today, now));
+    console.log(`✅ Relatório MENSAL ${monthName}`);
+  }
+
+  await sendReports(messages, evo, recipients);
+}, 60000);
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
