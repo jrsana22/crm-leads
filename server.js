@@ -417,7 +417,8 @@ app.get('/api/stats', auth, (req, res) => {
 app.get('/api/consultants', auth, (req, res) => {
   res.json(db.prepare('SELECT * FROM consultants ORDER BY order_index').all());
 });
-app.put('/api/consultants/:id', auth, adminOnly, (req, res) => {
+app.put('/api/consultants/:id', auth, (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'manager') return res.status(403).json({ error: 'Acesso restrito' });
   const phone = (req.body.whatsapp || '').toString().replace(/\D/g,'') || null;
   const name  = (req.body.name || '').trim();
   if (name) db.prepare('UPDATE consultants SET name=?, whatsapp=? WHERE id=?').run(name, phone, req.params.id);

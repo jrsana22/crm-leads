@@ -954,7 +954,10 @@ async function renderGestaoView() {
       <td><div style="display:flex;align-items:center;gap:10px"><div class="av ${AV[i%5]}" style="width:30px;height:30px;font-size:12px;border-radius:8px">${c.name[0]}</div><strong>${c.name}</strong></div></td>
       <td style="font-family:monospace;font-size:13px">${c.whatsapp||'–'}</td>
       <td>${c.active?'<span class="badge fechado">✅ Ativo</span>':'<span class="badge perdido">⏸ Inativo</span>'}</td>
-      <td><button class="btn btn-sm ${c.active?'btn-danger':'btn-ghost'}" onclick="toggleConsultantActive(${c.id},'${esc(c.name)}',${c.active})">${c.active?'⏸ Desativar':'▶ Ativar'}</button></td>
+      <td><div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="openConsultantModal(${c.id},'${esc(c.name)}','${c.whatsapp||''}')">✏️ WhatsApp</button>
+        <button class="btn btn-sm ${c.active?'btn-danger':'btn-ghost'}" onclick="toggleConsultantActive(${c.id},'${esc(c.name)}',${c.active})">${c.active?'⏸ Desativar':'▶ Ativar'}</button>
+      </div></td>
     </tr>`).join('');
 
   const fromEl = document.getElementById('gReassignFrom');
@@ -1081,7 +1084,8 @@ async function saveConsultant() {
   await api(`/api/consultants/${editingConsultantId}`, { method:'PUT', body:JSON.stringify({ name: document.getElementById('cName').value, whatsapp: document.getElementById('cPhone').value }) });
   closeMo('moConsultant');
   await loadConsultants();
-  await loadAdminData();
+  if (currentView === 'admin') await loadAdminData();
+  else await renderGestaoView();
   toast('WhatsApp salvo!', 'success');
 }
 
