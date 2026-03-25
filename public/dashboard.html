@@ -108,9 +108,15 @@
     .tw{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
     .th{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
     .th h3{font-size:15px;font-weight:600;flex:1}
-    .sinput{padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;outline:none;width:220px;transition:all .15s}
-    .sinput:focus{border-color:rgba(108,99,255,.5)}.sinput::placeholder{color:var(--muted)}
-    select.sinput{cursor:pointer}
+    .sinput{padding:9px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;outline:none;width:220px;transition:border-color .15s,box-shadow .15s;appearance:none;-webkit-appearance:none}
+    .sinput:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--pl)}
+    .sinput::placeholder{color:var(--muted)}
+    select.sinput{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+    input[type="date"].sinput{padding-right:10px;cursor:pointer}
+    input[type="date"].sinput::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer;filter:invert(1);width:16px;height:16px}
+    [data-theme="light"] input[type="date"].sinput::-webkit-calendar-picker-indicator{filter:none;opacity:.5}
+    input[type="date"]::-webkit-calendar-picker-indicator{opacity:.5;cursor:pointer;filter:invert(1);width:15px;height:15px}
+    [data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator{filter:none;opacity:.4}
     table{width:100%;border-collapse:collapse}
     th{padding:12px 16px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600}
     td{padding:13px 16px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
@@ -965,29 +971,28 @@ function renderAnaliseView() {
   const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
   document.getElementById('content').innerHTML = `
     <div class="tw" style="margin-bottom:20px">
-      <div class="th" style="flex-wrap:wrap;gap:12px">
-        <h3>📅 Filtrar por período</h3>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:13px;color:var(--muted)">De</span>
-            <input type="date" class="sinput" id="aFrom" value="${firstDay}" style="width:150px">
+      <div class="th">
+        <h3>📅 Período</h3>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:4px 12px;gap:6px">
+            <span style="font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap">De</span>
+            <input type="date" id="aFrom" value="${firstDay}" style="background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;width:130px">
+            <span style="color:var(--border);font-size:16px">│</span>
+            <span style="font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap">Até</span>
+            <input type="date" id="aTo" value="${today}" style="background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;width:130px">
           </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:13px;color:var(--muted)">Até</span>
-            <input type="date" class="sinput" id="aTo" value="${today}" style="width:150px">
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="loadAnalise()">Filtrar</button>
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('aFrom').value='';document.getElementById('aTo').value='';loadAnalise()">Limpar</button>
+          <button class="btn btn-primary btn-sm" onclick="loadAnalise()">🔍 Filtrar</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('aFrom').value='${firstDay}';document.getElementById('aTo').value='${today}';loadAnalise()">↺ Mês atual</button>
         </div>
-        <div id="exportBar" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
-          <span style="font-size:12px;color:var(--muted);font-weight:500">Exportar:</span>
-          <button class="btn btn-ghost btn-sm" onclick="exportAnaliseCSV()">⬇ CSV</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportAnalisePDF()">📄 PDF</button>
-          <button class="btn btn-ghost btn-sm" id="btnWpp" onclick="toggleWppField()">💬 WhatsApp</button>
-          <div id="wppField" style="display:none;align-items:center;gap:6px">
-            <input type="tel" id="wppNumber" class="sinput" placeholder="5531999999999" inputmode="numeric" style="width:160px">
-            <button class="btn btn-primary btn-sm" onclick="exportAnaliseWpp()">Enviar</button>
-          </div>
+      </div>
+      <div id="exportBar" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 20px;border-top:1px solid var(--border)">
+        <span style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Exportar:</span>
+        <button class="btn btn-ghost btn-sm" onclick="exportAnaliseCSV()">⬇ CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportAnalisePDF()">📄 PDF</button>
+        <button class="btn btn-ghost btn-sm" id="btnWpp" onclick="toggleWppField()">💬 WhatsApp</button>
+        <div id="wppField" style="display:none;align-items:center;gap:6px">
+          <input type="tel" id="wppNumber" class="sinput" placeholder="5531999999999" inputmode="numeric" style="width:160px">
+          <button class="btn btn-primary btn-sm" onclick="exportAnaliseWpp()">Enviar</button>
         </div>
       </div>
     </div>
